@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"reflect"
 	"testing"
@@ -73,6 +74,32 @@ func BenchmarkBlockHeaderMarshal(b *testing.B) {
 		buf.Reset()
 		if err := bh.MarshalCBOR(buf); err != nil {
 			b.Fatal(err)
+		}
+	}
+}
+
+func TestWinningTickets(t *testing.T) {
+	tickets := []string{
+		"xhBEe+fiUy+JUYliZU2DCnUwZKM1CfSaCTgOXiEOU2w=",
+		"w4mrnzNLtY3Q4yDoaeF7gL8+v8bt24iF3SX1pXaOGTM=",
+		"Q53RY/xbcX5dMNY+rVx3sUVsmDb3tIgFGKm5wnETOSo=",
+		"Q53RY/xbcX5dMNY+rVx3sUVsmDb3tIgFGKm5wnETOZo=",
+	}
+	tBytes := make([][]byte, len(tickets))
+	for i, ti := range tickets {
+		d, err := base64.StdEncoding.DecodeString(ti)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tBytes[i] = d
+	}
+
+	for _, ti := range tBytes {
+		winner := IsTicketWinner(ti, 32<<30, NewInt(8<<40))
+		if winner {
+			t.Log("winner")
+		} else {
+			t.Log("looser")
 		}
 	}
 }
