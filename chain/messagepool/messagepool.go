@@ -718,3 +718,27 @@ func (mp *MessagePool) loadLocal() error {
 
 	return nil
 }
+
+func (mp *MessagePool) ListLocal() ([]*types.SignedMessage, error) {
+	res, err := mp.localMsgs.Query(query.Query{})
+	if err != nil {
+		return nil, xerrors.Errorf("query local messages: %w", err)
+	}
+
+	var out []*types.SignedMessage
+
+	for r := range res.Next() {
+		if r.Error != nil {
+			return nil, xerrors.Errorf("r.Error: %w", r.Error)
+		}
+
+		var sm types.SignedMessage
+		if err := sm.UnmarshalCBOR(bytes.NewReader(r.Value)); err != nil {
+			return nil, xerrors.Errorf("unmarshaling local message: %w", err)
+		}
+
+		out = append(out, &sm)
+	}
+
+	return out, nil
+}

@@ -110,3 +110,7 @@ func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uin
 func (a *MpoolAPI) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
 	return a.Mpool.Updates(ctx)
 }
+
+func (a *MpoolAPI) MpoolListLocal(ctx context.Context) ([]*types.SignedMessage, error) {
+	return a.Mpool.ListLocal()
+}

@@ -47,6 +47,7 @@ type FullNode interface {
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
+	MpoolListLocal(ctx context.Context) ([]*types.SignedMessage, error)
 
 	// FullNodeStruct
 

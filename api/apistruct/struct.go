@@ -63,6 +63,7 @@ type FullNodeStruct struct {
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
 		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)               `perm:"read"`
 		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                `perm:"read"`
+		MpoolListLocal   func(ctx context.Context) ([]*types.SignedMessage, error)            `perm:"read"`
 
 		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error) `perm:"write"`
 
@@ -241,6 +242,10 @@ func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Messag
 
 func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
 	return c.Internal.MpoolSub(ctx)
+}
+
+func (c *FullNodeStruct) MpoolListLocal(ctx context.Context) ([]*types.SignedMessage, error) {
+	return c.Internal.MpoolListLocal(ctx)
 }
 
 func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, ticket *types.Ticket, eproof *types.EPostProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {
