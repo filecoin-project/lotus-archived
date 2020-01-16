@@ -515,7 +515,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	}
 	log.Warnf("active faults: %d, pss.Count: %d", activeFaults, pss.Count)
 	log.Warnf("faults: %v", faults)
-	log.Warnf("ids: %v", faults)
+	log.Warnf("ids: %v", ids)
 
 	proverID := vmctx.Message().To // TODO: normalize to ID address
 
