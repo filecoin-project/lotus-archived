@@ -486,7 +486,9 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 
 	activeFaults := uint64(0)
 	var sectorInfos []ffi.PublicSectorInfo
+	ids := make([]uint64, 0, pss.Count)
 	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
+		ids = append(ids, id)
 		if faults[id] {
 			activeFaults++
 			return nil
@@ -511,7 +513,9 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	}); err != nil {
 		return nil, aerrors.Absorb(err, 3, "could not decode sectorset")
 	}
-	log.Errorf("Active faults: %d, pss.Count: %d", activeFaults, pss.Count)
+	log.Warnf("active faults: %d, pss.Count: %d", activeFaults, pss.Count)
+	log.Warnf("faults: %v", faults)
+	log.Warnf("ids: %v", faults)
 
 	proverID := vmctx.Message().To // TODO: normalize to ID address
 
