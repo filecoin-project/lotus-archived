@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
 	"io/ioutil"
 	"net/http/httptest"
 	"path/filepath"
@@ -407,4 +408,76 @@ func TestAPIDealFlowReal(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 	test.TestDealFlow(t, builder, time.Second)
+}
+
+func TestHandlesConcurrentPledges(t *testing.T) {
+	logging.SetLogLevel("build", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("pubsub", "ERROR")
+	logging.SetLogLevel("sectors", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+
+	_, sn := mockSbBuilder(t, 1, []int{0})
+	miner := sn[0]
+
+	// configure a block mining routine
+
+	mine := true
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		for mine {
+			time.Sleep(1 * time.Second)
+			if err := sn[0].MineOne(context.Background()); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+
+	// concurrently pledge a quantity of garbage sectors
+
+	qtyConcurrentOps := 1000
+	errs := make(chan error, qtyConcurrentOps)
+
+	for i := 0; i < qtyConcurrentOps; i++ {
+		go func(j int) {
+			err := miner.PledgeSector(context.Background())
+			if err != nil {
+				t.Error(err)
+			}
+			errs <- err
+		}(i)
+	}
+
+	// wait for PledgeSector calls to return
+
+	for i := 0; i < qtyConcurrentOps; i++ {
+		<-errs
+	}
+
+	// loop until sectors have actually been pledged
+
+	qtyPledgedSectors := 0
+	for qtyPledgedSectors < qtyConcurrentOps {
+		time.Sleep(1 * time.Second)
+		sectors, err := miner.StorageMiner.SectorsList(context.Background())
+		if err != nil {
+			t.Error(err)
+		}
+
+		qtyPledgedSectors = len(sectors)
+
+		fmt.Println()
+		fmt.Printf("looping: %d/%d\n", qtyPledgedSectors, qtyConcurrentOps)
+		fmt.Println()
+	}
+
+	// stop mining
+
+	mine = false
+	<-done
 }
