@@ -148,8 +148,16 @@ func (m *StorageMinerNodeAdapter) WaitForReportFaults(context.Context, cid.Cid) 
 	panic("implement me")
 }
 
-func (m *StorageMinerNodeAdapter) GetSealTicket(context.Context) (s2.SealTicket, error) {
-	panic("implement me")
+func (m *StorageMinerNodeAdapter) GetSealTicket(ctx context.Context) (s2.SealTicket, error) {
+	ticket, err := m.tktFn(ctx)
+	if err != nil {
+		return s2.SealTicket{}, xerrors.Errorf("getting ticket failed: %w", err)
+	}
+
+	return s2.SealTicket{
+		BlockHeight: ticket.BlockHeight,
+		TicketBytes: ticket.TicketBytes[:],
+	}, nil
 }
 
 func (m *StorageMinerNodeAdapter) GetReplicaCommitmentByID(ctx context.Context, sectorID uint64) (commR []byte, wasFound bool, err error) {
