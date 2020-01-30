@@ -56,7 +56,7 @@ func (m *StorageMinerNodeAdapter) SendSelfDeals(ctx context.Context, pieces ...s
 		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: ", aerr)
 	}
 
-	msg, err := m.api.MpoolPushMessage(ctx, &types.Message{
+	smsg, err := m.api.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
 		From:     m.waddr,
 		Value:    types.NewInt(0),
@@ -69,7 +69,7 @@ func (m *StorageMinerNodeAdapter) SendSelfDeals(ctx context.Context, pieces ...s
 		return cid.Undef, err
 	}
 
-	return msg.Cid(), nil
+	return smsg.Cid(), nil
 }
 
 func (m *StorageMinerNodeAdapter) WaitForSelfDeals(ctx context.Context, publicStorageDealsMsgId cid.Cid) ([]uint64, uint8, error) {
@@ -91,7 +91,39 @@ func (m *StorageMinerNodeAdapter) WaitForSelfDeals(ctx context.Context, publicSt
 }
 
 func (m *StorageMinerNodeAdapter) SendPreCommitSector(ctx context.Context, sectorID uint64, commR []byte, ticket s2.SealTicket, pieces ...s2.Piece) (cid.Cid, error) {
-	panic("implement me")
+	dealIDs := make([]uint64, len(pieces))
+	for idx, p := range pieces {
+		dealIDs[idx] = p.DealID
+	}
+
+	params := &actors.SectorPreCommitInfo{
+		SectorNumber: sectorID,
+		CommR:     commR,
+		SealEpoch: ticket.BlockHeight,
+		DealIDs:   dealIDs,
+	}
+	enc, aerr := actors.SerializeParams(params)
+	if aerr != nil {
+		return cid.Undef, xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)
+	}
+
+	msg := &types.Message{
+		To:       m.maddr,
+		From:     m.waddr,
+		Method:   actors.MAMethods.PreCommitSector,
+		Params:   enc,
+		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
+		GasLimit: types.NewInt(1000000 /* i dont know help */),
+		GasPrice: types.NewInt(1),
+	}
+
+	log.Info("submitting precommit for sector: ", sectorID)
+	smsg, err := m.api.MpoolPushMessage(ctx, msg)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
+	}
+
+	return smsg.Cid(), nil
 }
 
 func (m *StorageMinerNodeAdapter) WaitForPreCommitSector(context.Context, cid.Cid) (uint64, uint8, error) {
