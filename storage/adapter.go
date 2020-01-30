@@ -126,8 +126,10 @@ func (m *StorageMinerNodeAdapter) SendPreCommitSector(ctx context.Context, secto
 	return smsg.Cid(), nil
 }
 
-func (m *StorageMinerNodeAdapter) WaitForPreCommitSector(context.Context, cid.Cid) (uint64, uint8, error) {
-	panic("implement me")
+func (m *StorageMinerNodeAdapter) WaitForPreCommitSector(ctx context.Context, preCommitSectorMsgCid cid.Cid) (uint64, uint8, error) {
+	panic("not used - delete")
+
+	return 0, 0, nil
 }
 
 func (m *StorageMinerNodeAdapter) SendProveCommitSector(ctx context.Context, sectorID uint64, proof []byte, dealids ...uint64) (cid.Cid, error) {
