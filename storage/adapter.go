@@ -72,8 +72,8 @@ func (m *StorageMinerNodeAdapter) SendSelfDeals(ctx context.Context, pieces ...s
 	return smsg.Cid(), nil
 }
 
-func (m *StorageMinerNodeAdapter) WaitForSelfDeals(ctx context.Context, publicStorageDealsMsgId cid.Cid) ([]uint64, uint8, error) {
-	r, err := m.api.StateWaitMsg(ctx, publicStorageDealsMsgId)
+func (m *StorageMinerNodeAdapter) WaitForSelfDeals(ctx context.Context, publicStorageDealsMsgCid cid.Cid) ([]uint64, uint8, error) {
+	r, err := m.api.StateWaitMsg(ctx, publicStorageDealsMsgCid)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -98,9 +98,9 @@ func (m *StorageMinerNodeAdapter) SendPreCommitSector(ctx context.Context, secto
 
 	params := &actors.SectorPreCommitInfo{
 		SectorNumber: sectorID,
-		CommR:     commR,
-		SealEpoch: ticket.BlockHeight,
-		DealIDs:   dealIDs,
+		CommR:        commR,
+		SealEpoch:    ticket.BlockHeight,
+		DealIDs:      dealIDs,
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
@@ -166,12 +166,44 @@ func (m *StorageMinerNodeAdapter) SendProveCommitSector(ctx context.Context, sec
 	return smsg.Cid(), nil
 }
 
-func (m *StorageMinerNodeAdapter) WaitForProveCommitSector(context.Context, cid.Cid) (uint64, uint8, error) {
-	panic("implement me")
+func (m *StorageMinerNodeAdapter) WaitForProveCommitSector(ctx context.Context, proveCommitSectorMsgCid cid.Cid) (uint64, uint8, error) {
+	mw, err := m.api.StateWaitMsg(ctx, proveCommitSectorMsgCid)
+	if err != nil {
+		return 0, 0, xerrors.Errorf("failed to wait for porep inclusion: %w", err)
+	}
+
+	return 0, mw.Receipt.ExitCode, nil
 }
 
 func (m *StorageMinerNodeAdapter) SendReportFaults(ctx context.Context, sectorIDs ...uint64) (cid.Cid, error) {
-	panic("implement me")
+	// TODO: check if the fault has already been reported, and that this sector is even valid
+
+	bf := types.NewBitField()
+	for _, id := range sectorIDs {
+		bf.Set(id)
+	}
+
+	enc, aerr := actors.SerializeParams(&actors.DeclareFaultsParams{bf})
+	if aerr != nil {
+		return cid.Undef, xerrors.Errorf("failed to serialize declare fault params: %w", aerr)
+	}
+
+	msg := &types.Message{
+		To:       m.maddr,
+		From:     m.waddr,
+		Method:   actors.MAMethods.DeclareFaults,
+		Params:   enc,
+		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
+		GasLimit: types.NewInt(1000000 /* i dont know help */),
+		GasPrice: types.NewInt(1),
+	}
+
+	smsg, err := m.api.MpoolPushMessage(ctx, msg)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to push declare faults message to network: %w", err)
+	}
+
+	return smsg.Cid(), nil
 }
 
 func (m *StorageMinerNodeAdapter) WaitForReportFaults(context.Context, cid.Cid) (uint8, error) {
