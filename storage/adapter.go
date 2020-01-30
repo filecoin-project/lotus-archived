@@ -1,7 +1,10 @@
 package storage
 
 import (
+	"bytes"
 	"context"
+	"math"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	s2 "github.com/filecoin-project/go-storage-miner"
@@ -10,8 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
-	"math"
-	"runtime"
 )
 
 type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
@@ -55,7 +56,7 @@ func (m *StorageMinerNodeAdapter) SendSelfDeals(ctx context.Context, pieces ...s
 		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: ", aerr)
 	}
 
-	smsg, err := m.api.MpoolPushMessage(ctx, &types.Message{
+	msg, err := m.api.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
 		From:     m.waddr,
 		Value:    types.NewInt(0),
@@ -68,14 +69,28 @@ func (m *StorageMinerNodeAdapter) SendSelfDeals(ctx context.Context, pieces ...s
 		return cid.Undef, err
 	}
 
-	return smsg.Cid(), nil
+	return msg.Cid(), nil
 }
 
-func (m *StorageMinerNodeAdapter) WaitForSelfDeals(context.Context, cid.Cid) ([]uint64, uint8, error) {
-	panic("implement me")
+func (m *StorageMinerNodeAdapter) WaitForSelfDeals(ctx context.Context, publicStorageDealsMsgId cid.Cid) ([]uint64, uint8, error) {
+	r, err := m.api.StateWaitMsg(ctx, publicStorageDealsMsgId)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if r.Receipt.ExitCode != 0 {
+		return nil, 0, nil
+	}
+
+	var resp actors.PublishStorageDealResponse
+	if err := resp.UnmarshalCBOR(bytes.NewReader(r.Receipt.Return)); err != nil {
+		return nil, 0, err
+	}
+
+	return resp.DealIDs, r.Receipt.ExitCode, nil
 }
 
-func (m *StorageMinerNodeAdapter) SendPreCommitSector(ctx context.Context, sectorID uint64, commR []byte, ticket storage.SealTicket, pieces ...storage.Piece) (cid.Cid, error) {
+func (m *StorageMinerNodeAdapter) SendPreCommitSector(ctx context.Context, sectorID uint64, commR []byte, ticket s2.SealTicket, pieces ...s2.Piece) (cid.Cid, error) {
 	panic("implement me")
 }
 
@@ -99,7 +114,7 @@ func (m *StorageMinerNodeAdapter) WaitForReportFaults(context.Context, cid.Cid) 
 	panic("implement me")
 }
 
-func (m *StorageMinerNodeAdapter) GetSealTicket(context.Context) (storage.SealTicket, error) {
+func (m *StorageMinerNodeAdapter) GetSealTicket(context.Context) (s2.SealTicket, error) {
 	panic("implement me")
 }
 
@@ -107,14 +122,14 @@ func (m *StorageMinerNodeAdapter) GetReplicaCommitmentByID(ctx context.Context, 
 	panic("implement me")
 }
 
-func (m *StorageMinerNodeAdapter) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (seed <-chan storage.SealSeed, err <-chan error, invalidated <-chan struct{}, done <-chan struct{}) {
+func (m *StorageMinerNodeAdapter) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (seed <-chan s2.SealSeed, err <-chan error, invalidated <-chan struct{}, done <-chan struct{}) {
 	panic("implement me")
 }
 
-func (m *StorageMinerNodeAdapter) CheckPieces(ctx context.Context, sectorID uint64, pieces []storage.Piece) *storage.CheckPiecesError {
+func (m *StorageMinerNodeAdapter) CheckPieces(ctx context.Context, sectorID uint64, pieces []s2.Piece) *s2.CheckPiecesError {
 	panic("implement me")
 }
 
-func (m *StorageMinerNodeAdapter) CheckSealing(ctx context.Context, commD []byte, dealIDs []uint64) *storage.CheckSealingError {
+func (m *StorageMinerNodeAdapter) CheckSealing(ctx context.Context, commD []byte, dealIDs []uint64) *s2.CheckSealingError {
 	panic("implement me")
 }
