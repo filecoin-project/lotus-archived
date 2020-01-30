@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math"
 
 	"github.com/filecoin-project/go-address"
@@ -134,7 +135,6 @@ func (m *StorageMinerNodeAdapter) WaitForPreCommitSector(ctx context.Context, pr
 
 func (m *StorageMinerNodeAdapter) SendProveCommitSector(ctx context.Context, sectorID uint64, proof []byte, dealIDs ...uint64) (cid.Cid, error) {
 	// TODO: Consider splitting states and persist proof for faster recovery
-
 	params := &actors.SectorProveCommitInfo{
 		Proof:    proof,
 		SectorID: sectorID,
@@ -169,7 +169,7 @@ func (m *StorageMinerNodeAdapter) SendProveCommitSector(ctx context.Context, sec
 func (m *StorageMinerNodeAdapter) WaitForProveCommitSector(ctx context.Context, proveCommitSectorMsgCid cid.Cid) (uint64, uint8, error) {
 	mw, err := m.api.StateWaitMsg(ctx, proveCommitSectorMsgCid)
 	if err != nil {
-		return 0, 0, xerrors.Errorf("failed to wait for porep inclusion: %w", err)
+		return 0, 0, err
 	}
 
 	return 0, mw.Receipt.ExitCode, nil
@@ -206,8 +206,13 @@ func (m *StorageMinerNodeAdapter) SendReportFaults(ctx context.Context, sectorID
 	return smsg.Cid(), nil
 }
 
-func (m *StorageMinerNodeAdapter) WaitForReportFaults(context.Context, cid.Cid) (uint8, error) {
-	panic("implement me")
+func (m *StorageMinerNodeAdapter) WaitForReportFaults(ctx context.Context, declareFaultsMsgCid cid.Cid) (uint8, error) {
+	mw, err := m.api.StateWaitMsg(ctx, declareFaultsMsgCid)
+	if err != nil {
+		return 0, err
+	}
+
+	return mw.Receipt.ExitCode, nil
 }
 
 func (m *StorageMinerNodeAdapter) GetSealTicket(ctx context.Context) (s2.SealTicket, error) {
@@ -223,7 +228,28 @@ func (m *StorageMinerNodeAdapter) GetSealTicket(ctx context.Context) (s2.SealTic
 }
 
 func (m *StorageMinerNodeAdapter) GetReplicaCommitmentByID(ctx context.Context, sectorID uint64) (commR []byte, wasFound bool, err error) {
-	panic("implement me")
+	act, err := m.api.StateGetActor(ctx, m.maddr, nil)
+	if err != nil {
+		return nil, true, err
+	}
+
+	st, err := m.api.ChainReadObj(ctx, act.Head)
+	if err != nil {
+		return nil, true, err
+	}
+
+	var state actors.StorageMinerActorState
+	if err := state.UnmarshalCBOR(bytes.NewReader(st)); err != nil {
+		return nil, true, xerrors.Errorf("unmarshaling miner state: %+v", err)
+	}
+
+	pci, found := state.PreCommittedSectors[fmt.Sprint(sectorID)]
+	if found {
+		// TODO: If not expired yet, we can just try reusing sealticket
+		return pci.Info.CommR, true, nil
+	}
+
+	return nil, false, nil
 }
 
 func (m *StorageMinerNodeAdapter) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (seed <-chan s2.SealSeed, err <-chan error, invalidated <-chan struct{}, done <-chan struct{}) {
