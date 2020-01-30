@@ -118,6 +118,7 @@ func (m *StorageMinerNodeAdapter) SendPreCommitSector(ctx context.Context, secto
 		GasPrice: types.NewInt(1),
 	}
 
+	log.Info("submitting precommit for sector: ", sectorID)
 	smsg, err := m.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
