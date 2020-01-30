@@ -132,8 +132,38 @@ func (m *StorageMinerNodeAdapter) WaitForPreCommitSector(ctx context.Context, pr
 	return 0, 0, nil
 }
 
-func (m *StorageMinerNodeAdapter) SendProveCommitSector(ctx context.Context, sectorID uint64, proof []byte, dealids ...uint64) (cid.Cid, error) {
-	panic("implement me")
+func (m *StorageMinerNodeAdapter) SendProveCommitSector(ctx context.Context, sectorID uint64, proof []byte, dealIDs ...uint64) (cid.Cid, error) {
+	// TODO: Consider splitting states and persist proof for faster recovery
+
+	params := &actors.SectorProveCommitInfo{
+		Proof:    proof,
+		SectorID: sectorID,
+		DealIDs:  dealIDs,
+	}
+
+	enc, aerr := actors.SerializeParams(params)
+	if aerr != nil {
+		return cid.Undef, xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)
+	}
+
+	msg := &types.Message{
+		To:       m.maddr,
+		From:     m.waddr,
+		Method:   actors.MAMethods.ProveCommitSector,
+		Params:   enc,
+		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
+		GasLimit: types.NewInt(1000000 /* i dont know help */),
+		GasPrice: types.NewInt(1),
+	}
+
+	// TODO: check seed / ticket are up to date
+
+	smsg, err := m.api.MpoolPushMessage(ctx, msg)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
+	}
+
+	return smsg.Cid(), nil
 }
 
 func (m *StorageMinerNodeAdapter) WaitForProveCommitSector(context.Context, cid.Cid) (uint64, uint8, error) {
