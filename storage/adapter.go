@@ -320,9 +320,83 @@ func (m *StorageMinerNodeAdapter) GetSealSeed(ctx context.Context, preCommitMsgC
 }
 
 func (m *StorageMinerNodeAdapter) CheckPieces(ctx context.Context, sectorID uint64, pieces []s2.Piece) *s2.CheckPiecesError {
-	panic("implement me")
+	head, err := m.api.ChainHead(ctx)
+	if err != nil {
+		err = xerrors.Errorf("getting chain head: %w", err)
+		return s2.NewCheckPiecesError(err, s2.CheckPiecesAPI)
+	}
+	for i, piece := range pieces {
+		deal, err := m.api.StateMarketStorageDeal(ctx, piece.DealID, nil)
+		if err != nil {
+			err = xerrors.Errorf("getting deal %d for piece %d: %w", piece.DealID, i, err)
+			return s2.NewCheckPiecesError(err, s2.CheckPiecesAPI)
+		}
+		if string(deal.PieceRef) != string(piece.CommP) {
+			err := xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with wrong CommP: %x != %x", i, len(pieces), sectorID, piece.DealID, piece.CommP, deal.PieceRef)
+			return s2.NewCheckPiecesError(err, s2.CheckPiecesInvalidDeals)
+		}
+		if piece.Size != deal.PieceSize {
+			err := xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with different size: %d != %d", i, len(pieces), sectorID, piece.DealID, piece.Size, deal.PieceSize)
+			return s2.NewCheckPiecesError(err, s2.CheckPiecesInvalidDeals)
+		}
+		if head.Height() >= deal.ProposalExpiration {
+			err := xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - expires %d, head %d", i, len(pieces), sectorID, piece.DealID, deal.ProposalExpiration, head.Height())
+			return s2.NewCheckPiecesError(err, s2.CheckPiecesExpiredDeals)
+		}
+	}
+	return nil
 }
+func (m *StorageMinerNodeAdapter) CheckSealing(ctx context.Context, commD []byte, dealIDs []uint64, ticket s2.SealTicket) *s2.CheckSealingError {
+	head, err := m.api.ChainHead(ctx)
+	if err != nil {
+		err = xerrors.Errorf("getting chain head: %w", err)
+		return s2.NewCheckSealingError(err, s2.CheckSealingAPI)
+	}
 
-func (m *StorageMinerNodeAdapter) CheckSealing(ctx context.Context, commD []byte, dealIDs []uint64) *s2.CheckSealingError {
-	panic("implement me")
+	ssize, err := m.api.StateMinerSectorSize(ctx, m.maddr, head)
+	if err != nil {
+		err = xerrors.Errorf("getting miner sector size: %w", err)
+		return s2.NewCheckSealingError(err, s2.CheckSealingAPI)
+	}
+
+	ccparams, err := actors.SerializeParams(&actors.ComputeDataCommitmentParams{
+		DealIDs:    dealIDs,
+		SectorSize: ssize,
+	})
+	if err != nil {
+		err = xerrors.Errorf("computing params for ComputeDataCommitment: %w", err)
+		return s2.NewCheckSealingError(err, s2.CheckSealingAPI)
+	}
+
+	ccmt := &types.Message{
+		To:       actors.StorageMarketAddress,
+		From:     m.maddr,
+		Value:    types.NewInt(0),
+		GasPrice: types.NewInt(0),
+		GasLimit: types.NewInt(9999999999),
+		Method:   actors.SMAMethods.ComputeDataCommitment,
+		Params:   ccparams,
+	}
+	r, err := m.api.StateCall(ctx, ccmt, nil)
+	if err != nil {
+		err = xerrors.Errorf("calling ComputeDataCommitment: %w", err)
+		return s2.NewCheckSealingError(err, s2.CheckSealingAPI)
+	}
+
+	if r.ExitCode != 0 {
+		err := xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.ExitCode)
+		return s2.NewCheckSealingError(err, s2.CheckSealingBadCommD)
+	}
+
+	if string(r.Return) != string(commD) {
+		err := xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.Return, commD)
+		return s2.NewCheckSealingError(err, s2.CheckSealingBadCommD)
+	}
+
+	if int64(head.Height())-int64(ticket.BlockHeight+build.SealRandomnessLookback) > build.SealRandomnessLookbackLimit {
+		err := xerrors.Errorf("ticket expired: seal height: %d, head: %d", ticket.BlockHeight+build.SealRandomnessLookback, head.Height())
+		return s2.NewCheckSealingError(err, s2.CheckSealingExpiredTicket)
+	}
+
+	return nil
 }
