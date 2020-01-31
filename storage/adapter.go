@@ -9,11 +9,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	s2 "github.com/filecoin-project/go-storage-miner"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
@@ -127,12 +129,6 @@ func (m *StorageMinerNodeAdapter) SendPreCommitSector(ctx context.Context, secto
 	return smsg.Cid(), nil
 }
 
-func (m *StorageMinerNodeAdapter) WaitForPreCommitSector(ctx context.Context, preCommitSectorMsgCid cid.Cid) (uint64, uint8, error) {
-	panic("not used - delete")
-
-	return 0, 0, nil
-}
-
 func (m *StorageMinerNodeAdapter) SendProveCommitSector(ctx context.Context, sectorID uint64, proof []byte, dealIDs ...uint64) (cid.Cid, error) {
 	// TODO: Consider splitting states and persist proof for faster recovery
 	params := &actors.SectorProveCommitInfo{
@@ -166,13 +162,13 @@ func (m *StorageMinerNodeAdapter) SendProveCommitSector(ctx context.Context, sec
 	return smsg.Cid(), nil
 }
 
-func (m *StorageMinerNodeAdapter) WaitForProveCommitSector(ctx context.Context, proveCommitSectorMsgCid cid.Cid) (uint64, uint8, error) {
+func (m *StorageMinerNodeAdapter) WaitForProveCommitSector(ctx context.Context, proveCommitSectorMsgCid cid.Cid) (uint8, error) {
 	mw, err := m.api.StateWaitMsg(ctx, proveCommitSectorMsgCid)
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 
-	return 0, mw.Receipt.ExitCode, nil
+	return mw.Receipt.ExitCode, nil
 }
 
 func (m *StorageMinerNodeAdapter) SendReportFaults(ctx context.Context, sectorIDs ...uint64) (cid.Cid, error) {
@@ -252,8 +248,75 @@ func (m *StorageMinerNodeAdapter) GetReplicaCommitmentByID(ctx context.Context, 
 	return nil, false, nil
 }
 
-func (m *StorageMinerNodeAdapter) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (seed <-chan s2.SealSeed, err <-chan error, invalidated <-chan struct{}, done <-chan struct{}) {
-	panic("implement me")
+func (m *StorageMinerNodeAdapter) GetSealSeed(ctx context.Context, preCommitMsgCid cid.Cid, interval uint64) (<-chan s2.SealSeed, <-chan s2.SeedInvalidated, <-chan s2.FinalityReached, <-chan *s2.GetSealSeedError) {
+	ready := make(chan s2.SealSeed)
+	invalidated := make(chan s2.SeedInvalidated)
+	finalized := make(chan s2.FinalityReached)
+	errs := make(chan *s2.GetSealSeedError)
+
+	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
+
+	go func() {
+		mw, err := m.api.StateWaitMsg(ctx, preCommitMsgCid)
+		if err != nil {
+			err = xerrors.Errorf("failed to wait for pre-commit message: %+v", err)
+			errs <- s2.NewGetSealSeedError(err, s2.GetSealSeedFailedError)
+			return
+		}
+
+		if mw.Receipt.ExitCode != 0 {
+			log.Error("sector precommit failed: ", mw.Receipt.ExitCode)
+			err := xerrors.Errorf("sector precommit failed: %d", mw.Receipt.ExitCode)
+			errs <- s2.NewGetSealSeedError(err, s2.GetSealSeedFailedError)
+			return
+		}
+
+		n := mw.TipSet.Height() + build.InteractivePoRepDelay
+
+		// waiting for a seed to become available, e.g. mined into a block at
+		// the provided confidence level-block height
+		err = m.events.ChainAt(func(ectx context.Context, ts *types.TipSet, curH uint64) error {
+			randHeight := n - 1 // -1 because of how the messages are applied
+			rand, err := m.api.ChainGetRandomness(ectx, ts.Key(), int64(randHeight))
+			if err != nil {
+				err = xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
+				errs <- s2.NewGetSealSeedError(err, s2.GetSealSeedFatalError)
+				return err
+			}
+
+			ready <- s2.SealSeed{
+				BlockHeight: randHeight,
+				TicketBytes: rand,
+			}
+
+			return nil
+		}, func(ctx context.Context, ts *types.TipSet) error {
+			log.Warn("revert in interactive commit sector step")
+			// TODO: need to cancel running process and restart...
+			invalidated <- s2.SeedInvalidated{}
+
+			return nil
+		}, build.InteractivePoRepConfidence, n)
+		if err != nil {
+			log.Warn("waitForPreCommitMessage ChainAt errored: ", err)
+		}
+
+		// waiting for the seed to become final, i.e. mined into a block at
+		// finality
+		err = m.events.ChainAt(func(ectx context.Context, ts *types.TipSet, curH uint64) error {
+			finalized <- s2.FinalityReached{}
+			return nil
+		}, func(ctx context.Context, ts *types.TipSet) error {
+			// noop
+			return nil
+		}, build.Finality, n)
+
+		if err != nil {
+			log.Warn("waitForPreCommitMessage ChainAt errored: ", err)
+		}
+	}()
+
+	return ready, invalidated, finalized, errs
 }
 
 func (m *StorageMinerNodeAdapter) CheckPieces(ctx context.Context, sectorID uint64, pieces []s2.Piece) *s2.CheckPiecesError {
