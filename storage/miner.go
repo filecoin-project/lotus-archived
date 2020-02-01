@@ -84,16 +84,6 @@ func (m *Miner) Run(ctx context.Context) error {
 		return xerrors.Errorf("miner preflight checks failed: %w", err)
 	}
 
-	fps := &fpostScheduler{
-		api: m.api,
-		sb:  m.sb,
-
-		actor:  m.maddr,
-		worker: m.worker,
-	}
-
-	go fps.run(ctx)
-
 	evts := events.NewEvents(ctx, m.api)
 	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sb, m.tktFn)
 
