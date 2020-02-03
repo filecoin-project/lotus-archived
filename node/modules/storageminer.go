@@ -35,6 +35,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/miner"
@@ -104,12 +105,14 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 		return nil, err
 	}
 
-	sm, err := s2.NewMiner(storage.NewStorageMinerNodeAdapter(api), ds, sb)
+	worker, err := api.StateMinerWorker(helpers.LifecycleCtx(mctx, lc), maddr, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	worker, err := api.StateMinerWorker(helpers.LifecycleCtx(mctx, lc), maddr, nil)
+	evts := events.NewEvents(helpers.LifecycleCtx(mctx, lc), api)
+
+	sm, err := s2.NewMiner(storage.NewStorageMinerNodeAdapter(api, evts, maddr, worker, tktFn), ds, sb)
 	if err != nil {
 		return nil, err
 	}

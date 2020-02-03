@@ -30,8 +30,8 @@ type StorageMinerNodeAdapter struct {
 	tktFn TicketFn
 }
 
-func NewStorageMinerNodeAdapter(n storageMinerApi) *StorageMinerNodeAdapter {
-	return &StorageMinerNodeAdapter{api: n}
+func NewStorageMinerNodeAdapter(n storageMinerApi, evts *events.Events, maddr, waddr address.Address, tktFn TicketFn) *StorageMinerNodeAdapter {
+	return &StorageMinerNodeAdapter{api: n, events: evts, tktFn: tktFn, maddr: maddr, waddr: waddr}
 }
 
 func (m *StorageMinerNodeAdapter) SendSelfDeals(ctx context.Context, pieces ...s2.PieceInfo) (cid.Cid, error) {
