@@ -132,6 +132,8 @@ github.com/filecoin-project/go-storage-miner v0.0.0-20200131192712-167af64b4652 
 github.com/filecoin-project/go-storage-miner v0.0.0-20200131192712-167af64b4652/go.mod h1:ftibNXdA4XZtRkHnVk3hAAzAt6zim+05IgIVolpp91M=
 github.com/filecoin-project/go-storage-miner v0.0.0-20200131234346-3c7496e9a0ea h1:WuNpUCB1pMgIB4sKpjwd/RdETDfRD/ltSfylRlRcQPM=
 github.com/filecoin-project/go-storage-miner v0.0.0-20200131234346-3c7496e9a0ea/go.mod h1:ftibNXdA4XZtRkHnVk3hAAzAt6zim+05IgIVolpp91M=
+github.com/filecoin-project/go-storage-miner v0.0.0-20200203184605-5f755f094608 h1:GDi5EPjb2BhH3l95KX0dcHgobV0UxiE13U/GvDnJiBM=
+github.com/filecoin-project/go-storage-miner v0.0.0-20200203184605-5f755f094608/go.mod h1:ftibNXdA4XZtRkHnVk3hAAzAt6zim+05IgIVolpp91M=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1 h1:EzDjxMg43q1tA2c0MV3tNbaontnHLplHyFF6M5KiVP0=
@@ -169,6 +171,7 @@ github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5a
 github.com/google/go-cmp v0.3.0/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMywk6iLU=
 github.com/google/go-cmp v0.3.1 h1:Xye71clBPdm5HgqGwUkwhbynsUJZhDbS20FvLhQ2izg=
 github.com/google/go-cmp v0.3.1/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMywk6iLU=
+github.com/google/go-cmp v0.4.0 h1:xsAVV57WRhGj6kEIi8ReJzQlHHqcBYCElAvkovg3B/4=
 github.com/google/go-cmp v0.4.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/uuid v1.1.1 h1:Gkbcsh/GbpXz7lPftLA3P6TYMwjCLYm83jiFQZF/3gY=

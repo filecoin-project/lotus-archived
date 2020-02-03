@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	s2 "github.com/filecoin-project/go-storage-miner"
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/statemachine"
 	"github.com/filecoin-project/lotus/paych"
-	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 func main() {
@@ -122,12 +122,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./storage/sealing/cbor_gen.go", "sealing",
-		sealing.SealTicket{},
-		sealing.SealSeed{},
-		sealing.Piece{},
-		sealing.SectorInfo{},
-		sealing.Log{},
+	err = gen.WriteMapEncodersToFile("./storage/s2/cbor_gen.go", "s2",
+		s2.SealTicket{},
+		s2.SealSeed{},
+		s2.Piece{},
+		s2.SectorInfo{},
+		s2.Log{},
 	)
 	if err != nil {
 		fmt.Println(err)

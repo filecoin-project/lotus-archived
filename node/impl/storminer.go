@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api/apistruct"
 
+	s2 "github.com/filecoin-project/go-storage-miner"
 	"github.com/gorilla/mux"
 	files "github.com/ipfs/go-ipfs-files"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/tarutil"
 	"github.com/filecoin-project/lotus/miner"
-	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -29,7 +29,7 @@ type StorageMinerAPI struct {
 	SectorBuilder       sectorbuilder.Interface
 	SectorBlocks        *sectorblocks.SectorBlocks
 
-	Miner      *storage.Miner
+	Miner      *s2.Miner
 	BlockMiner *miner.Miner
 	Full       api.FullNode
 }

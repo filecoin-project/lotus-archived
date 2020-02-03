@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 
+	s2 "github.com/filecoin-project/go-storage-miner"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -11,7 +12,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 var log = logging.Logger("sectorblocks")
@@ -77,7 +77,7 @@ func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 
 	// TODO: better strategy (e.g. look for already unsealed)
 	var best api.SealedRef
-	var bestSi sealing.SectorInfo
+	var bestSi s2.SectorInfo
 	for _, r := range refs {
 		si, err := s.sectorBlocks.Miner.GetSectorInfo(r.SectorID)
 		if err != nil {

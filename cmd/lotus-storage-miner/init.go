@@ -26,6 +26,7 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	s2 "github.com/filecoin-project/go-storage-miner"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -38,7 +39,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 var initCmd = &cli.Command{
@@ -243,17 +243,17 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 	}
 
 	for _, sector := range meta.Sectors {
-		sectorKey := datastore.NewKey(sealing.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
+		sectorKey := datastore.NewKey(s2.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
 
 		dealID, err := findMarketDealID(ctx, api, sector.Deal)
 		if err != nil {
 			return xerrors.Errorf("finding storage deal for pre-sealed sector %d: %w", sector.SectorID, err)
 		}
 
-		info := &sealing.SectorInfo{
+		info := &s2.SectorInfo{
 			State:    lapi.Proving,
 			SectorID: sector.SectorID,
-			Pieces: []sealing.Piece{
+			Pieces: []s2.Piece{
 				{
 					DealID: dealID,
 					Size:   meta.SectorSize,
@@ -263,9 +263,9 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 			CommD:            sector.CommD[:],
 			CommR:            sector.CommR[:],
 			Proof:            nil,
-			Ticket:           sealing.SealTicket{},
+			Ticket:           s2.SealTicket{},
 			PreCommitMessage: nil,
-			Seed:             sealing.SealSeed{},
+			Seed:             s2.SealSeed{},
 			CommitMessage:    nil,
 		}
 
