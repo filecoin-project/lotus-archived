@@ -7,12 +7,13 @@ import (
 	"net/http"
 	"os"
 
+	"path/filepath"
+
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
 	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
-	"path/filepath"
 
 	"github.com/filecoin-project/lotus/lib/tarutil"
 )
@@ -78,6 +79,11 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 }
 
 func (w *worker) push(typ string, sectorID uint64) error {
+	if local, ok := os.LookupEnv("LOCAL_SEAL_WORKER"); ok && local != "false" {
+		log.Info("local seal worker, skipping sector fetch, accessing directly")
+		return nil
+	}
+
 	w.limiter.transferLimit <- struct{}{}
 	defer func() {
 		<-w.limiter.transferLimit
@@ -147,11 +153,21 @@ func (w *worker) push(typ string, sectorID uint64) error {
 }
 
 func (w *worker) remove(typ string, sectorID uint64) error {
+	if local, ok := os.LookupEnv("LOCAL_SEAL_WORKER"); ok && local != "false" {
+		log.Info("local seal worker, skipping sector fetch, accessing directly")
+		return nil
+	}
+
 	filename := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
 	return os.RemoveAll(filename)
 }
 
 func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) error {
+	if local, ok := os.LookupEnv("LOCAL_SEAL_WORKER"); ok && local != "false" {
+		log.Info("local seal worker, skipping sector fetch, accessing directly")
+		return nil
+	}
+
 	w.limiter.transferLimit <- struct{}{}
 	defer func() {
 		<-w.limiter.transferLimit
