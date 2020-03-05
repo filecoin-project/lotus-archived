@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
+	"os"
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
@@ -53,9 +55,12 @@ func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
-				log.Warn("VM.Call failure: ", ar)
+				m := rs.vmctx.Message()
+				fmt.Println(m.To, m.Method, m.From)
+				log.Error("VM.Call failure: ", ar)
 				debug.PrintStack()
 				aerr = ar
+				os.Exit(1)
 				return
 			}
 			debug.PrintStack()
@@ -225,8 +230,18 @@ func (rs *runtimeShim) AbortStateMsg(msg string) {
 	panic(aerrors.NewfSkip(3, 101, msg))
 }
 
-func (rs *runtimeShim) ValidateImmediateCallerType(...cid.Cid) {
-	log.Info("validate caller type is dumb")
+func (rs *runtimeShim) ValidateImmediateCallerType(t ...cid.Cid) {
+	for _, c := range t {
+		ac, err := rs.vmctx.ActorCodeCID(rs.ImmediateCaller())
+		if err != nil {
+			rs.Abortf(exitcode.SysErrInternal, "failed to get immediate caller actor code cid: %s", err)
+		}
+
+		if ac == c {
+			return
+		}
+	}
+	rs.Abortf(exitcode.SysErrForbidden, "invalid caller type")
 }
 
 func (rs *runtimeShim) CurrEpoch() abi.ChainEpoch {

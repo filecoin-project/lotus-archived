@@ -87,7 +87,19 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	return b, nil
 }
 
+type GenConfig struct {
+	ValueTransferMsgsPerBlock int
+}
+
+var DefaultConfig = &GenConfig{
+	ValueTransferMsgsPerBlock: 20,
+}
+
 func NewGenerator() (*ChainGen, error) {
+	return NewGeneratorWithConfig(DefaultConfig)
+}
+
+func NewGeneratorWithConfig(cfg *GenConfig) (*ChainGen, error) {
 	mr := repo.NewMemory(nil)
 	lr, err := mr.Lock(repo.StorageMiner)
 	if err != nil {
