@@ -99,7 +99,6 @@ github.com/fatih/color v1.8.0/go.mod h1:3l45GVGkyrnYNl9HoIjnp2NnNWvh6hLAqD8yTfGj
 github.com/fd/go-nat v1.0.0/go.mod h1:BTBu/CKvMmOMUPkKVef1pngt2WFH/lg7E6yQnulfp6E=
 github.com/filecoin-project/chain-validation v0.0.6-0.20200305212458-670d41260fd7 h1:elmXXIpuwO7UNWABiUUMISgwt8O9HkqMLKmJEzuxqR8=
 github.com/filecoin-project/chain-validation v0.0.6-0.20200305212458-670d41260fd7/go.mod h1:g9PtEzAwUNn45uM2xOWS4fUKTOFRQAFKZz2zYdKQivk=
-github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5 h1:/MmWluswvDIbuPvBct4q6HeQgVm62O2DzWYTB38kt4A=
 github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
 github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be h1:TooKBwR/g8jG0hZ3lqe9S5sy2vTUcLOZLlz3M5wGn2E=
 github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
@@ -129,17 +128,15 @@ github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZO
 github.com/filecoin-project/specs-actors v0.0.0-20200210130641-2d1fbd8672cf/go.mod h1:xtDZUB6pe4Pksa/bAJbJ693OilaC5Wbot9jMhLm3cZA=
 github.com/filecoin-project/specs-actors v0.0.0-20200226200336-94c9b92b2775/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
 github.com/filecoin-project/specs-actors v0.0.0-20200302223606-0eaf97b10aaf/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
-github.com/filecoin-project/specs-actors v0.0.0-20200305205312-53bb01da9aeb h1:9Ch6f/LYCh/BoriHfSp8sRX0OaO+9gQVK6x0vGl9o0s=
 github.com/filecoin-project/specs-actors v0.0.0-20200305205312-53bb01da9aeb/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
-github.com/filecoin-project/specs-actors v0.0.0-20200306001214-5b98d3ed4bc4 h1:EFOQ/DA3jOu2r2/r7/vnkGRXoCoDGY5knXb/bVl/X/c=
-github.com/filecoin-project/specs-actors v0.0.0-20200306001214-5b98d3ed4bc4/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
+github.com/filecoin-project/specs-actors v0.0.0-20200306043603-709a3ce21094 h1:iHTwtiM9/gGU1WL1GfDAY04dJcojSg8BK4TOaIqHVYQ=
+github.com/filecoin-project/specs-actors v0.0.0-20200306043603-709a3ce21094/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
 github.com/filecoin-project/specs-storage v0.0.0-20200303233430-1a5a408f7513 h1:okBx3lPomwDxlPmRvyP078BwivDfdxNUlpCDhDD0ia8=
 github.com/filecoin-project/specs-storage v0.0.0-20200303233430-1a5a408f7513/go.mod h1:sC2Ck2l1G8hXI5Do/3sp0yxbMRMnukbFwP9KF1CRFLw=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1 h1:EzDjxMg43q1tA2c0MV3tNbaontnHLplHyFF6M5KiVP0=
 github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1/go.mod h1:0eHX/BVySxPc6SE2mZRoppGq7qcEagxdmQnA3dzork8=
-github.com/go-check/check v0.0.0-20180628173108-788fd7840127 h1:0gkP6mzaMqkmpcJYCFOLkIBwI7xFExG03bbkOkCvUPI=
 github.com/go-check/check v0.0.0-20180628173108-788fd7840127/go.mod h1:9ES+weclKsC9YodN5RgxqK/VD9HM9JsCSh7rNhMZE98=
 github.com/go-kit/kit v0.8.0/go.mod h1:xBxKIO96dXMWWy0MnWVtmwkA9/13aqxPnvrjFYMA2as=
 github.com/go-logfmt/logfmt v0.3.0/go.mod h1:Qt1PoO58o5twSAckw1HlFXLmHsOX5/0LbT9GBnD5lWE=
@@ -502,7 +499,6 @@ github.com/libp2p/go-libp2p-testing v0.0.1/go.mod h1:gvchhf3FQOtBdr+eFUABet5a4MB
 github.com/libp2p/go-libp2p-testing v0.0.2/go.mod h1:gvchhf3FQOtBdr+eFUABet5a4MBLK8jM3V4Zghvmi+E=
 github.com/libp2p/go-libp2p-testing v0.0.3/go.mod h1:gvchhf3FQOtBdr+eFUABet5a4MBLK8jM3V4Zghvmi+E=
 github.com/libp2p/go-libp2p-testing v0.0.4/go.mod h1:gvchhf3FQOtBdr+eFUABet5a4MBLK8jM3V4Zghvmi+E=
-github.com/libp2p/go-libp2p-testing v0.1.0 h1:WaFRj/t3HdMZGNZqnU2pS7pDRBmMeoDx7/HDNpeyT9U=
 github.com/libp2p/go-libp2p-testing v0.1.0/go.mod h1:xaZWMJrPUM5GlDBxCeGUi7kI4eqnjVyavGroI2nxEM0=
 github.com/libp2p/go-libp2p-testing v0.1.1 h1:U03z3HnGI7Ni8Xx6ONVZvUFOAzWYmolWf5W5jAOPNmU=
 github.com/libp2p/go-libp2p-testing v0.1.1/go.mod h1:xaZWMJrPUM5GlDBxCeGUi7kI4eqnjVyavGroI2nxEM0=
@@ -564,7 +560,6 @@ github.com/libp2p/go-yamux v1.2.3/go.mod h1:FGTiPvoV/3DVdgWpX+tM0OW3tsM+W5bSE3gZ
 github.com/lucas-clemente/quic-go v0.11.2 h1:Mop0ac3zALaBR3wGs6j8OYe/tcFvFsxTUFMkE/7yUOI=
 github.com/lucas-clemente/quic-go v0.11.2/go.mod h1:PpMmPfPKO9nKJ/psF49ESTAGQSdfXxlg1otPbEB2nOw=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
-github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329 h1:2gxZ0XQIU/5z3Z3bUBu+FXuk2pFbkN6tcwi/pjyaDic=
 github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/marten-seemann/qtls v0.2.3 h1:0yWJ43C62LsZt08vuQJDK1uC1czUc3FJeCLPoNAI4vA=
 github.com/marten-seemann/qtls v0.2.3/go.mod h1:xzjG7avBwGGbdZ8dTGxlBnLArsVKLvwmjgmPuiQEcYk=
@@ -620,7 +615,6 @@ github.com/multiformats/go-multiaddr-fmt v0.1.0 h1:WLEFClPycPkp4fnIzoFoV9FVd49/e
 github.com/multiformats/go-multiaddr-fmt v0.1.0/go.mod h1:hGtDIW4PU4BqJ50gW2quDuPVjyWNZxToGUh/HwTZYJo=
 github.com/multiformats/go-multiaddr-net v0.0.1/go.mod h1:nw6HSxNmCIQH27XPGBuX+d1tnvM7ihcFwHMSstNAVUU=
 github.com/multiformats/go-multiaddr-net v0.1.0/go.mod h1:5JNbcfBOP4dnhoZOv10JJVkJO0pCCEf8mTnipAo2UZQ=
-github.com/multiformats/go-multiaddr-net v0.1.1 h1:jFFKUuXTXv+3ARyHZi3XUqQO+YWMKgBdhEvuGRfnL6s=
 github.com/multiformats/go-multiaddr-net v0.1.1/go.mod h1:5JNbcfBOP4dnhoZOv10JJVkJO0pCCEf8mTnipAo2UZQ=
 github.com/multiformats/go-multiaddr-net v0.1.2 h1:P7zcBH9FRETdPkDrylcXVjQLQ2t1JQtNItZULWNWgeg=
 github.com/multiformats/go-multiaddr-net v0.1.2/go.mod h1:QsWt3XK/3hwvNxZJp92iMQKME1qHfpYmyIjFVsSOY6Y=
@@ -659,11 +653,8 @@ github.com/opentracing/opentracing-go v1.0.2/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFSt
 github.com/opentracing/opentracing-go v1.1.0 h1:pWlfV3Bxv7k65HYwkikxat0+s3pV4bsqf19k25Ur8rU=
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/openzipkin/zipkin-go v0.1.6/go.mod h1:QgAqvLzwWbR/WpD4A3cGpPtJrZXNIiJc5AZX7/PBEpw=
-github.com/otiai10/copy v1.0.2 h1:DDNipYy6RkIkjMwy+AWzgKiNTyj2RUI9yEMeETEpVyc=
 github.com/otiai10/copy v1.0.2/go.mod h1:c7RpqBkwMom4bYTSkLSym4VSJz/XtncWRAj/J4PEIMY=
-github.com/otiai10/curr v0.0.0-20150429015615-9b4961190c95 h1:+OLn68pqasWca0z5ryit9KGfp3sUsW4Lqg32iRMJyzs=
 github.com/otiai10/curr v0.0.0-20150429015615-9b4961190c95/go.mod h1:9qAhocn7zKJG+0mI8eUu6xqkFDYS2kb2saOteoSB3cE=
-github.com/otiai10/mint v1.3.0 h1:Ady6MKVezQwHBkGzLFbrsywyp09Ah7rkmfjV3Bcr5uc=
 github.com/otiai10/mint v1.3.0/go.mod h1:F5AjcsTsWUqX+Na9fpHb52P8pcRX2CI6A3ctIT91xUo=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pierrec/lz4 v2.0.5+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
@@ -711,7 +702,6 @@ github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a/go.mod h1:s
 github.com/smartystreets/goconvey v0.0.0-20190710185942-9d28bd7c0945/go.mod h1:syvi0/a8iFYH4r/RixwvyeAJjdLS9QV7WQ/tjFTllLA=
 github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 h1:WN9BUFbdyOsSH/XohnWpXOlq9NBD5sGAB2FciQMUEe8=
 github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337/go.mod h1:syvi0/a8iFYH4r/RixwvyeAJjdLS9QV7WQ/tjFTllLA=
-github.com/smola/gocompat v0.2.0 h1:6b1oIMlUXIpz//VKEDzPVBK8KG7beVwmHIUEBIs/Pns=
 github.com/smola/gocompat v0.2.0/go.mod h1:1B0MlxbmoZNo3h8guHp8HztB3BSYR5itql9qtVc0ypY=
 github.com/spacemonkeygo/openssl v0.0.0-20181017203307-c2dcc5cca94a/go.mod h1:7AyxJNCJ7SBZ1MfVQCWD6Uqo2oubI2Eq2y2eqf+A5r0=
 github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 h1:RC6RW7j+1+HkWaX/Yh71Ee5ZHaHYt7ZP4sQgUrm6cDU=
