@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -15,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
@@ -45,6 +48,11 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 		return xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
 	}
 
+	cctx, err := tag.New(ctx.Context(), tag.Upsert(metrics.SectorState, api.SectorStates[sector.State]))
+	if err != nil {
+		log.Warnf("failed to tag context with sector state")
+	}
+	stats.Record(cctx, metrics.SectorStates.M(1))
 	return ctx.Send(SectorPacked{pieces: pieces})
 }
 

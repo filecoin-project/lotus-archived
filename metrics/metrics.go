@@ -17,6 +17,7 @@ var (
 	MessageTo, _    = tag.NewKey("message_to")
 	MessageNonce, _ = tag.NewKey("message_nonce")
 	ReceivedFrom, _ = tag.NewKey("received_from")
+	SectorState, _  = tag.NewKey("sector_state")
 )
 
 // Measures
@@ -34,6 +35,7 @@ var (
 	RPCInvalidMethod         = stats.Int64("rpc/invalid_method", "Total number of invalid RPC methods called", stats.UnitDimensionless)
 	RPCRequestError          = stats.Int64("rpc/request_error", "Total number of request errors handled", stats.UnitDimensionless)
 	RPCResponseError         = stats.Int64("rpc/response_error", "Total number of responses errors handled", stats.UnitDimensionless)
+	SectorStates             = stats.Int64("sector/state", "The count of sectors in each state", stats.UnitDimensionless)
 )
 
 var (
@@ -82,6 +84,11 @@ var (
 		Measure:     PeerCount,
 		Aggregation: view.LastValue(),
 	}
+	SectorStatesView = &view.View{
+		Measure:     SectorStates,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{SectorState},
+	}
 	// All RPC related metrics should at the very least tag the RPCMethod
 	RPCInvalidMethodView = &view.View{
 		Measure:     RPCInvalidMethod,
@@ -112,6 +119,7 @@ var DefaultViews = []*view.View{
 	MessageValidationFailureView,
 	MessageValidationSuccessView,
 	PeerCountView,
+	SectorStatesView,
 	RPCInvalidMethodView,
 	RPCRequestErrorView,
 	RPCResponseErrorView,
