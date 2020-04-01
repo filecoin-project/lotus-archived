@@ -93,6 +93,33 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 	return mpow, ps.TotalNetworkPower, nil
 }
 
+func GetPowerForAll(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]types.MinerInfo, types.BigInt, error) {
+	var ps power.State
+	_, err := sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &ps, ts)
+	if err != nil {
+		return nil, big.Zero(), xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
+	}
+	m := adt.AsMap(sm.cs.Store(ctx), ps.Claims)
+	var pow big.Int
+	var out []types.MinerInfo
+
+	err = m.ForEach(&pow, func(saddr string) error {
+		a, err := address.NewFromBytes([]byte(saddr))
+		if err != nil {
+			return xerrors.Errorf("could not decode address: %w", err)
+		}
+		out = append(out, types.MinerInfo{
+			MinerAddr: a,
+			Power:     pow.Copy(),
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, big.Zero(), xerrors.Errorf("interating claims: %w", err)
+	}
+	return out, ps.TotalNetworkPower, nil
+}
+
 func GetMinerPeerID(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (peer.ID, error) {
 	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
