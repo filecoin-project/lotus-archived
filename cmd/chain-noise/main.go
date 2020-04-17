@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/lib/sigs"
 	"math/rand"
 	"os"
 	"time"
@@ -29,7 +31,8 @@ func main() {
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
 		},
-		Commands: []*cli.Command{runCmd},
+		Commands: []*cli.Command{runCmd,
+			badMsgNoSenderCmd},
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -56,6 +59,61 @@ var runCmd = &cli.Command{
 		sendSmallFundsTxs(ctx, api, addr, 5)
 		return nil
 	},
+}
+
+var badMsgNoSenderCmd = &cli.Command{
+	Name: "no-sender",
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.ReqContext(cctx)
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		k, err := wallet.GenerateKey(crypto.SigTypeSecp256k1)
+		if err != nil {
+			return err
+		}
+
+		to, err := api.WalletNew(ctx, crypto.SigTypeSecp256k1)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+
+		sendTx(ctx, api, k, to, 5)
+		return nil
+	},
+}
+
+func sendTx(ctx context.Context, api api.FullNode, k *wallet.Key, to address.Address, rate int) error {
+	msg := &types.Message{
+		From:     k.Address,
+		To:       to,
+		Value:    types.NewInt(1),
+		GasLimit: 100000,
+		GasPrice: types.NewInt(0),
+	}
+
+	sig, err := sigs.Sign(wallet.ActSigType(k.Type), k.PrivateKey, msg.Cid().Bytes())
+	if err != nil {
+		return err
+	}
+
+	smsg := &types.SignedMessage{
+		Message:   *msg,
+		Signature: *sig,
+	}
+
+	cid, err := api.MpoolPush(ctx, smsg)
+
+	if err != nil {
+		return err
+	}
+	fmt.Println("Message sent: ", cid)
+
+	return nil
 }
 
 func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Address, rate int) error {

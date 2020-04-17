@@ -415,48 +415,48 @@ func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
 
 func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, 0, build.BlockMessageLimit)
-	inclNonces := make(map[address.Address]uint64)
-	inclBalances := make(map[address.Address]types.BigInt)
-	inclCount := make(map[address.Address]int)
+	//inclNonces := make(map[address.Address]uint64)
+	//inclBalances := make(map[address.Address]types.BigInt)
+	//inclCount := make(map[address.Address]int)
 
 	for _, msg := range msgs {
 
-		if msg.Message.To == address.Undef {
-			log.Warnf("message in mempool had bad 'To' address")
-			continue
-		}
-
-		from := msg.Message.From
-
-		if _, ok := inclNonces[from]; !ok {
-			act, err := al(ctx, from, ts.Key())
-			if err != nil {
-				log.Warnf("failed to check message sender balance, skipping message: %+v", err)
-				continue
-			}
-
-			inclNonces[from] = act.Nonce
-			inclBalances[from] = act.Balance
-		}
-
-		if inclBalances[from].LessThan(msg.Message.RequiredFunds()) {
-			log.Warnf("message in mempool does not have enough funds: %s", msg.Cid())
-			continue
-		}
-
-		if msg.Message.Nonce > inclNonces[from] {
-			log.Debugf("message in mempool has too high of a nonce (%d > %d, from %s, inclcount %d) %s (%d pending for orig)", msg.Message.Nonce, inclNonces[from], from, inclCount[from], msg.Cid(), countFrom(msgs, from))
-			continue
-		}
-
-		if msg.Message.Nonce < inclNonces[from] {
-			log.Warnf("message in mempool has already used nonce (%d < %d), from %s, to %s, %s (%d pending for)", msg.Message.Nonce, inclNonces[from], msg.Message.From, msg.Message.To, msg.Cid(), countFrom(msgs, from))
-			continue
-		}
-
-		inclNonces[from] = msg.Message.Nonce + 1
-		inclBalances[from] = types.BigSub(inclBalances[from], msg.Message.RequiredFunds())
-		inclCount[from]++
+		//if msg.Message.To == address.Undef {
+		//	log.Warnf("message in mempool had bad 'To' address")
+		//	continue
+		//}
+		//
+		//from := msg.Message.From
+		//
+		//if _, ok := inclNonces[from]; !ok {
+		//	act, err := al(ctx, from, ts.Key())
+		//	if err != nil {
+		//		log.Warnf("failed to check message sender balance, skipping message: %+v", err)
+		//		continue
+		//	}
+		//
+		//	inclNonces[from] = act.Nonce
+		//	inclBalances[from] = act.Balance
+		//}
+		//
+		//if inclBalances[from].LessThan(msg.Message.RequiredFunds()) {
+		//	log.Warnf("message in mempool does not have enough funds: %s", msg.Cid())
+		//	continue
+		//}
+		//
+		//if msg.Message.Nonce > inclNonces[from] {
+		//	log.Debugf("message in mempool has too high of a nonce (%d > %d, from %s, inclcount %d) %s (%d pending for orig)", msg.Message.Nonce, inclNonces[from], from, inclCount[from], msg.Cid(), countFrom(msgs, from))
+		//	continue
+		//}
+		//
+		//if msg.Message.Nonce < inclNonces[from] {
+		//	log.Warnf("message in mempool has already used nonce (%d < %d), from %s, to %s, %s (%d pending for)", msg.Message.Nonce, inclNonces[from], msg.Message.From, msg.Message.To, msg.Cid(), countFrom(msgs, from))
+		//	continue
+		//}
+		//
+		//inclNonces[from] = msg.Message.Nonce + 1
+		//inclBalances[from] = types.BigSub(inclBalances[from], msg.Message.RequiredFunds())
+		//inclCount[from]++
 
 		out = append(out, msg)
 		if len(out) >= build.BlockMessageLimit {
