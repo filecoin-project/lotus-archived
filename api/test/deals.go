@@ -62,7 +62,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, carExport
 		}
 	}()
 
-	makeDeal(t, ctx, 6, client, miner, carExport)
+	makeDealAndWaitForSuccess(t, ctx, client, miner, carExport)
 
 	mine = false
 	fmt.Println("shutting down mining")
@@ -100,15 +100,120 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		}
 	}()
 
-	makeDeal(t, ctx, 6, client, miner, false)
-	makeDeal(t, ctx, 7, client, miner, false)
+	makeDealAndWaitForSuccess(t, ctx, client, miner, false)
+	makeDealAndWaitForSuccess(t, ctx, client, miner, false)
 
 	mine = false
 	fmt.Println("shutting down mining")
 	<-done
 }
 
-func makeDeal(t *testing.T, ctx context.Context, rseed int, client *impl.FullNodeAPI, miner TestStorageNode, carExport bool) {
+func TestManyDealsFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
+	os.Setenv("BELLMAN_NO_GPU", "1")
+
+	ctx := context.Background()
+
+	n, sn := b(t, 5, []int{0, 1})
+
+	for i, c := range n {
+		client := c.FullNode.(*impl.FullNodeAPI)
+		for j, miner := range sn {
+			proposeDeal(t, ctx, client, miner, false)
+			proposeDeal(t, ctx, client, miner, false)
+		}
+	}
+
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	addrinfo, err := client.NetAddrsListen(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := miner.NetConnect(ctx, addrinfo); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second)
+
+	mine := true
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		for mine {
+			time.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+
+	makeDealAndWaitForSuccess(t, ctx, client, miner, false)
+	makeDealAndWaitForSuccess(t, ctx, client, miner, false)
+
+	mine = false
+	fmt.Println("shutting down mining")
+	<-done
+}
+
+func proposeDeal(t *testing.T, ctx context.Context, client *impl.FullNodeAPI, miner TestStorageNode, carExport bool) {
+	data := make([]byte, 1600)
+	rand.New(rand.NewSource(6)).Read(data)
+
+	r := bytes.NewReader(data)
+	fcid, err := client.ClientImportLocal(ctx, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	maddr, err := miner.ActorAddress(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println("FILE CID: ", fcid)
+
+	addr, err := client.WalletDefaultAddress(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deal, err := client.ClientStartDeal(ctx, &api.StartDealParams{
+		Data:              &storagemarket.DataRef{Root: fcid},
+		Wallet:            addr,
+		Miner:             maddr,
+		EpochPrice:        types.NewInt(1000000),
+		MinBlocksDuration: 100,
+	})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
+	time.Sleep(time.Second)
+loop:
+	for {
+		di, err := client.ClientGetDealInfo(ctx, *deal)
+		if err != nil {
+			t.Fatal(err)
+		}
+		switch di.State {
+		case storagemarket.StorageDealProposalRejected:
+			t.Fatal("deal rejected")
+		case storagemarket.StorageDealFailing:
+			t.Fatal("deal failed")
+		case storagemarket.StorageDealError:
+			t.Fatal("deal errored", di.Message)
+		case storagemarket.StorageDealActive:
+			fmt.Println("COMPLETE", di)
+			break loop
+		}
+		fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
+		time.Sleep(time.Second / 2)
+	}
+}
+
+func makeDealAndWaitForSuccess(t *testing.T, ctx context.Context, client *impl.FullNodeAPI, miner TestStorageNode, carExport bool) {
 	data := make([]byte, 1600)
 	rand.New(rand.NewSource(6)).Read(data)
 
