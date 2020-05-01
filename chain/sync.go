@@ -678,6 +678,8 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		if err != nil {
 			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
 		}
+		fmt.Printf("[LOLO T GEN] height: %d, cid: %s\n", h.Height, h.Cid())
+		fmt.Printf("[LOLO T GEN] worker addr: %s, vrfBase: %x, ticket vrfproof: %x", waddr, vrfBase, h.Ticket.VRFProof)
 
 		err = gen.VerifyVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
 		if err != nil {
