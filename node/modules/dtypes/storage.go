@@ -19,6 +19,7 @@ import (
 type MetadataDS datastore.Batching
 
 type ChainBlockstore blockstore.Blockstore
+type ChainValidatedBlocksCache datastore.Batching
 
 type ChainGCLocker blockstore.GCLocker
 type ChainGCBlockstore blockstore.GCBlockstore

@@ -53,8 +53,9 @@ type ChainStore struct {
 	bs bstore.Blockstore
 	ds dstore.Datastore
 
-	heaviestLk sync.Mutex
-	heaviest   *types.TipSet
+	validatedBlocks dstore.Batching
+	heaviestLk      sync.Mutex
+	heaviest        *types.TipSet
 
 	bestTips *pubsub.PubSub
 	pubLk    sync.Mutex
@@ -69,6 +70,12 @@ type ChainStore struct {
 	tsCache *lru.ARCCache
 
 	vmcalls runtime.Syscalls
+}
+
+func NewChainStoreWithValBlockCache(bs bstore.Blockstore, ds dstore.Batching, v dstore.Batching, vmcalls runtime.Syscalls) *ChainStore {
+	cs := NewChainStore(bs, ds, vmcalls)
+	cs.validatedBlocks = v
+	return cs
 }
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Syscalls) *ChainStore {
@@ -467,6 +474,18 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 	// TODO: do we want to look for slashable submissions here? might as well...
 
 	return nil
+}
+
+func (cs *ChainStore) AddToValidatedBlocks(b cid.Cid) error {
+	return cs.validatedBlocks.Put(dstore.NewKey(b.String()), nil)
+}
+
+func (cs *ChainStore) HasValidatedBlock(b cid.Cid) bool {
+	found, err := cs.validatedBlocks.Has(dstore.NewKey(b.String()))
+	if err != nil {
+		return false
+	}
+	return found
 }
 
 func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) error {
