@@ -35,12 +35,13 @@ require (
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/sector-storage v0.0.0-20200810171746-eac70842d8e0
-	github.com/filecoin-project/specs-actors v0.9.2
+	github.com/filecoin-project/specs-actors v0.9.3-0.20200814231935-9c9e59f02e4d
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200730063404-f7db367e9401
 	github.com/filecoin-project/storage-fsm v0.0.0-20200805013058-9d9ea4e6331f
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
+	github.com/go-pg/pg/v10 v10.0.0-beta.8
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.2
@@ -126,7 +127,7 @@ require (
 	go.uber.org/zap v1.15.0
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-	golang.org/x/sys v0.0.0-20200602225109-6fdc65e7d980
+	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	google.golang.org/api v0.25.0 // indirect

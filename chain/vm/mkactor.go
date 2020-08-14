@@ -2,7 +2,6 @@ package vm
 
 import (
 	"context"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -34,7 +33,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, aer
 		return nil, err
 	}
 
-	addrID, err := rt.state.RegisterNewAddress(addr)
+	addrID, err := rt.state.RegisterNewAddress(rt.Context(), addr)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "registering actor address")
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/support/orm"
 	"reflect"
 	"time"
 
@@ -425,11 +426,11 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}
 
 	gasHolder := &types.Actor{Balance: types.NewInt(0)}
-	if err := vm.transferToGasHolder(msg.From, gasHolder, gascost); err != nil {
+	if err := vm.transferToGasHolder(ctx, msg.From, gasHolder, gascost); err != nil {
 		return nil, xerrors.Errorf("failed to withdraw gas funds: %w", err)
 	}
 
-	if err := vm.incrementNonce(msg.From); err != nil {
+	if err := vm.incrementNonce(ctx, msg.From); err != nil {
 		return nil, err
 	}
 
@@ -482,22 +483,22 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}
 	gasOutputs := ComputeGasOutputs(gasUsed, msg.GasLimit, vm.baseFee, msg.GasFeeCap, msg.GasPremium)
 
-	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder,
+	if err := vm.transferFromGasHolder(ctx, builtin.BurntFundsActorAddr, gasHolder,
 		gasOutputs.BaseFeeBurn); err != nil {
 		return nil, xerrors.Errorf("failed to burn base fee: %w", err)
 	}
 
-	if err := vm.transferFromGasHolder(builtin.RewardActorAddr, gasHolder, gasOutputs.MinerTip); err != nil {
+	if err := vm.transferFromGasHolder(ctx, builtin.RewardActorAddr, gasHolder, gasOutputs.MinerTip); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
 	}
 
-	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder,
+	if err := vm.transferFromGasHolder(ctx, builtin.BurntFundsActorAddr, gasHolder,
 		gasOutputs.OverEstimationBurn); err != nil {
 		return nil, xerrors.Errorf("failed to burn overestimation fee: %w", err)
 	}
 
 	// refund unused gas
-	if err := vm.transferFromGasHolder(msg.From, gasHolder, gasOutputs.Refund); err != nil {
+	if err := vm.transferFromGasHolder(ctx, msg.From, gasHolder, gasOutputs.Refund); err != nil {
 		return nil, xerrors.Errorf("failed to refund gas: %w", err)
 	}
 
@@ -702,7 +703,9 @@ func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params
 	oldCtx, rt.ctx = rt.ctx, ctx
 	defer func() {
 		rt.ctx = oldCtx
+		rt.ctx = orm.NewAddressContext(rt.ctx, rt.Message().Receiver())
 	}()
+	rt.ctx = orm.NewAddressContext(rt.ctx, rt.Message().Receiver())
 	ret, err := vm.inv.Invoke(act.Code, rt, method, params)
 	if err != nil {
 		return nil, err
@@ -718,8 +721,8 @@ func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
 	return vm.circSupplyCalc(ctx, vm.blockHeight, vm.cstate)
 }
 
-func (vm *VM) incrementNonce(addr address.Address) error {
-	return vm.cstate.MutateActor(addr, func(a *types.Actor) error {
+func (vm *VM) incrementNonce(ctx context.Context, addr address.Address) error {
+	return vm.cstate.MutateActor(ctx, addr, func(a *types.Actor) error {
 		a.Nonce++
 		return nil
 	})
@@ -774,12 +777,12 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.Actor
 	return nil
 }
 
-func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, amt types.BigInt) error {
+func (vm *VM) transferToGasHolder(ctx context.Context, addr address.Address, gasHolder *types.Actor, amt types.BigInt) error {
 	if amt.LessThan(types.NewInt(0)) {
 		return xerrors.Errorf("attempted to transfer negative value to gas holder")
 	}
 
-	return vm.cstate.MutateActor(addr, func(a *types.Actor) error {
+	return vm.cstate.MutateActor(ctx, addr, func(a *types.Actor) error {
 		if err := deductFunds(a, amt); err != nil {
 			return err
 		}
@@ -788,7 +791,7 @@ func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, 
 	})
 }
 
-func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor, amt types.BigInt) error {
+func (vm *VM) transferFromGasHolder(ctx context.Context, addr address.Address, gasHolder *types.Actor, amt types.BigInt) error {
 	if amt.LessThan(types.NewInt(0)) {
 		return xerrors.Errorf("attempted to transfer negative value from gas holder")
 	}
@@ -797,7 +800,7 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor
 		return nil
 	}
 
-	return vm.cstate.MutateActor(addr, func(a *types.Actor) error {
+	return vm.cstate.MutateActor(ctx, addr, func(a *types.Actor) error {
 		if err := deductFunds(gasHolder, amt); err != nil {
 			return err
 		}

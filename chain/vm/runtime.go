@@ -299,6 +299,15 @@ func (rt *Runtime) Context() context.Context {
 	return rt.ctx
 }
 
+func (rt *Runtime) WithValue(key string, value interface{}) {
+	rt.ctx = context.WithValue(rt.ctx, key, value)
+	return
+}
+
+func (rt *Runtime) GetValue(key string) interface{} {
+	return rt.ctx.Value(key)
+}
+
 func (rt *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
 	log.Warnf("Abortf: " + fmt.Sprintf(msg, args...))
 	panic(aerrors.NewfSkip(2, code, msg, args...))

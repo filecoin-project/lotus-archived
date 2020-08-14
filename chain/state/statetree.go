@@ -3,6 +3,8 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/support/orm"
+	"github.com/filecoin-project/specs-actors/support/orm/models"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -280,9 +282,9 @@ func (st *StateTree) ClearSnapshot() {
 	st.snaps.mergeLastLayer()
 }
 
-func (st *StateTree) RegisterNewAddress(addr address.Address) (address.Address, error) {
+func (st *StateTree) RegisterNewAddress(ctx context.Context, addr address.Address) (address.Address, error) {
 	var out address.Address
-	err := st.MutateActor(builtin.InitActorAddr, func(initact *types.Actor) error {
+	err := st.MutateActor(ctx, builtin.InitActorAddr, func(initact *types.Actor) error {
 		var ias init_.State
 		if err := st.Store.Get(context.TODO(), initact.Head, &ias); err != nil {
 			return err
@@ -324,7 +326,7 @@ func (st *StateTree) Revert() error {
 	return nil
 }
 
-func (st *StateTree) MutateActor(addr address.Address, f func(*types.Actor) error) error {
+func (st *StateTree) MutateActor(ctx context.Context, addr address.Address, f func(*types.Actor) error) error {
 	act, err := st.GetActor(addr)
 	if err != nil {
 		return err
@@ -332,6 +334,18 @@ func (st *StateTree) MutateActor(addr address.Address, f func(*types.Actor) erro
 
 	if err := f(act); err != nil {
 		return err
+	}
+
+	if tx := orm.TxFromContext(ctx); tx != nil {
+		if _, err := tx.Model(&models.Actor{
+			ParentStateRoot: orm.CIDFromContext(ctx).String(),
+			Code:            act.Code.String(),
+			Head:            act.Head.String(),
+			Balance:         act.Balance.String(),
+			Nonce:           act.Nonce,
+		}).OnConflict("do nothing").Insert(); err != nil {
+			log.Errorw("Failed to exec statement", "error", err.Error())
+		}
 	}
 
 	return st.SetActor(addr, act)

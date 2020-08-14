@@ -3,10 +3,10 @@ package stmgr
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/support/orm"
+	"os"
 	"sync"
-
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
@@ -17,10 +17,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 
+	"github.com/go-pg/pg/v10"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -38,6 +42,8 @@ var log = logging.Logger("statemgr")
 type StateManager struct {
 	cs *store.ChainStore
 
+	DB *pg.DB
+
 	stCache       map[string][]cid.Cid
 	compWait      map[string]chan struct{}
 	stlk          sync.Mutex
@@ -47,8 +53,31 @@ type StateManager struct {
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
+	var db *pg.DB
+	url := os.Getenv("LOTUS_POSTGRES")
+	if len(url) > 0 {
+		opt, err := pg.ParseURL(url)
+		if err != nil {
+			panic(err)
+		}
+
+		db = pg.Connect(opt)
+		// Check if connection credentials are valid and PostgreSQL is up and running.
+		if err := db.Ping(context.Background()); err != nil {
+			panic(err)
+		}
+
+		if err := miner.CreateSchema(db); err != nil {
+			panic(err)
+		}
+		if err := orm.CreateSchema(db); err != nil {
+			panic(err)
+		}
+	}
+
 	return &StateManager{
 		newVM:    vm.NewVM,
+		DB:       db,
 		cs:       cs,
 		stCache:  make(map[string][]cid.Cid),
 		compWait: make(map[string]chan struct{}),
@@ -110,6 +139,26 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 		// magical genesis miner, this won't work properly, so we short circuit here
 		// This avoids the question of 'who gets paid the genesis block reward'
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
+	}
+
+	if sm.DB != nil {
+		ctx = orm.NewCIDContext(ctx, ts.ParentState())
+		tx, err := sm.DB.BeginContext(ctx)
+		if err != nil {
+			log.Errorw("Failed to begin transaction", "error", err.Error())
+		}
+		ctx = orm.NewTxContext(ctx, tx)
+		defer func() {
+			if err == nil {
+				if err := tx.CommitContext(ctx); err != nil {
+					log.Errorw("Failed to commit transaction", "error", err.Error())
+				}
+			} else {
+				if err := tx.RollbackContext(ctx); err != nil {
+					log.Errorw("Failed to Rollback transaction", "error", err.Error())
+				}
+			}
+		}()
 	}
 
 	st, rec, err = sm.computeTipSetState(ctx, ts, nil)
