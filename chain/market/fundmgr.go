@@ -92,6 +92,10 @@ func (fm *FundMgr) stateChanged(ts *types.TipSet, ts2 *types.TipSet, states even
 	// overwrite our in memory cache with new values from chain (chain is canonical)
 	fm.lk.Lock()
 	for addr, balanceChange := range changedBalances {
+		if fm.available[addr].Int != nil {
+			log.Infof("State balance change recorded, prev: %s, new: %s", fm.available[addr].String(), balanceChange.To.String())
+		}
+
 		fm.available[addr] = balanceChange.To
 	}
 	fm.lk.Unlock()
@@ -116,15 +120,17 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 		return cid.Undef, err
 	}
 	fm.lk.Lock()
+	bal, err := fm.api.StateMarketBalance(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		fm.lk.Unlock()
+		return cid.Undef, err
+	}
+
+	stateAvail := types.BigSub(bal.Escrow, bal.Locked)
+
 	avail, ok := fm.available[idAddr]
 	if !ok {
-		bal, err := fm.api.StateMarketBalance(ctx, addr, types.EmptyTSK)
-		if err != nil {
-			fm.lk.Unlock()
-			return cid.Undef, err
-		}
-
-		avail = types.BigSub(bal.Escrow, bal.Locked)
+		avail = stateAvail
 	}
 
 	toAdd := types.BigSub(amt, avail)
@@ -133,6 +139,8 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 	}
 	fm.available[idAddr] = big.Add(avail, toAdd)
 	fm.lk.Unlock()
+
+	log.Infof("Funds operation w/ Expected Balance: %s, In State: %s, Requested: %s, Adding: %s", avail.String(), stateAvail.String(), amt.String(), toAdd.String())
 
 	if toAdd.LessThanEqual(big.Zero()) {
 		return cid.Undef, nil
