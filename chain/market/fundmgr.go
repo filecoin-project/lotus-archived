@@ -14,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
@@ -52,7 +51,7 @@ func StartFundManager(lc fx.Lifecycle, api API) *FundMgr {
 			match := func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
 				return dealDiffFn(ctx, oldTs.Key(), newTs.Key())
 			}
-			return ev.StateChanged(fm.checkFunc, fm.stateChanged, fm.revert, int(build.MessageConfidence), events.NoTimeout, match)
+			return ev.StateChanged(fm.checkFunc, fm.stateChanged, fm.revert, 0, events.NoTimeout, match)
 		},
 	})
 	return fm
