@@ -251,8 +251,7 @@ func (s *Syncer) unsyncedBlocks(ctx context.Context, head *types.TipSet, since u
 }
 
 func (s *Syncer) syncedBlocks(since, limit uint64) (map[cid.Cid]struct{}, error) {
-	// timestamp is used to return a configurable amount of rows based on when they were last added.
-	rws, err := s.db.Query(`select bs.cid FROM blocks_synced bs left join blocks b on b.cid = bs.cid where b.height <= $1 limit $2`, since, limit)
+	rws, err := s.db.Query(`select bs.cid FROM blocks_synced bs left join blocks b on b.cid = bs.cid where b.height <= $1 and bs.processed_at is not null limit $2`, since, limit)
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to query blocks_synced: %w", err)
 	}

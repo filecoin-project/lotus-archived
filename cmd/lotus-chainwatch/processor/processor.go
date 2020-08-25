@@ -341,7 +341,7 @@ where rnk <= $1
 	}
 	out := map[cid.Cid]*types.BlockHeader{}
 
-	minBlock := abi.ChainEpoch(math.MaxInt64)
+	minBlock := abi.ChainEpoch(math.MaxInt64 - 1)
 	maxBlock := abi.ChainEpoch(0)
 	// TODO consider parallel execution here for getting the blocks from the api as is done in fetchMessages()
 	for rows.Next() {
