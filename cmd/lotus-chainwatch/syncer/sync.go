@@ -151,6 +151,9 @@ create index if not exists state_heights_parentstateroot_index
 }
 
 func (s *Syncer) Start(ctx context.Context) {
+	if err := logging.SetLogLevel("syncer", "info"); err != nil {
+		log.Fatal(err)
+	}
 	log.Debug("Starting Syncer")
 
 	if err := s.setupSchemas(); err != nil {
@@ -181,7 +184,7 @@ func (s *Syncer) Start(ctx context.Context) {
 					}
 
 					if err := s.storeCirculatingSupply(ctx, change.Val); err != nil {
-						log.Debugw("failed to store circulating supply", "error", err)
+						// TODO do something with me
 					}
 
 					if len(unsynced) == 0 {
@@ -204,7 +207,6 @@ func (s *Syncer) Start(ctx context.Context) {
 }
 
 func (s *Syncer) unsyncedBlocks(ctx context.Context, head *types.TipSet, since uint64) (map[cid.Cid]*types.BlockHeader, error) {
-	log.Debugw("Gathering unsynced blocks", "since", since)
 	hasList, err := s.syncedBlocks(since, s.lookbackLimit)
 	if err != nil {
 		return nil, err
