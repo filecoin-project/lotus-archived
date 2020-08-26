@@ -271,7 +271,6 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	preCommitEvents := make(chan *MinerSectorsEvent, 8)
 	sectorEvents := make(chan *MinerSectorsEvent, 8)
 	partitionEvents := make(chan *MinerSectorsEvent, 8)
-	p.sectorDealEvents = make(chan *SectorDealEvent, 8)
 
 	grp.Go(func() error {
 		return p.storeMinerSectorEvents(ctx, sectorEvents, preCommitEvents, partitionEvents)
@@ -280,9 +279,8 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	grp.Go(func() error {
 		defer func() {
 			close(preCommitEvents)
-			close(p.sectorDealEvents)
 		}()
-		return p.storeMinerPreCommitInfo(ctx, miners, preCommitEvents, p.sectorDealEvents)
+		return p.storeMinerPreCommitInfo(ctx, miners, preCommitEvents)
 	})
 
 	grp.Go(func() error {
@@ -298,7 +296,7 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	return grp.Wait()
 }
 
-func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerActorInfo, sectorEvents chan<- *MinerSectorsEvent, sectorDeals chan<- *SectorDealEvent) error {
+func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerActorInfo, sectorEvents chan<- *MinerSectorsEvent) error {
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -334,13 +332,6 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 
 		preCommitAdded := make([]uint64, len(changes.Added))
 		for i, added := range changes.Added {
-			if len(added.Info.DealIDs) > 0 {
-				sectorDeals <- &SectorDealEvent{
-					MinerID:  m.common.addr,
-					SectorID: uint64(added.Info.SectorNumber),
-					DealIDs:  added.Info.DealIDs,
-				}
-			}
 			if added.Info.ReplaceCapacity {
 				if _, err := stmt.Exec(
 					m.common.addr.String(),

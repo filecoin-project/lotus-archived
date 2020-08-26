@@ -96,12 +96,6 @@ func (p *Processor) HandleMarketChanges(ctx context.Context, marketTips ActorTip
 		log.Fatalw("Failed to persist market actors", "error", err)
 	}
 
-	// we persist the dealID <--> minerID,sectorID here since the dealID needs to be stored above first
-	if err := p.storePreCommitDealInfo(p.sectorDealEvents); err != nil {
-		close(p.sectorDealEvents)
-		return err
-	}
-
 	if err := p.updateMarket(ctx, marketChanges); err != nil {
 		log.Fatalw("Failed to update market actors", "error", err)
 	}
