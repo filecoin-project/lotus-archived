@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"go.opencensus.io/trace"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/processor"
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/scheduler"
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/syncer"
+	"github.com/filecoin-project/lotus/lib/tracing"
 )
 
 var runCmd = &cli.Command{
@@ -46,6 +48,13 @@ var runCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
+		jaeger := tracing.SetupJaegerTracing("lotus-chainwatch")
+		defer func() {
+			if jaeger != nil {
+				jaeger.Flush()
+			}
+		}()
+
 		v, err := api.Version(ctx)
 		if err != nil {
 			return err
@@ -69,6 +78,9 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("Database failed to respond to ping (is it online?): %w", err)
 		}
 		db.SetMaxOpenConns(1350)
+
+		ctx, span := trace.StartSpan(ctx, "/run")
+		defer span.End()
 
 		sync := syncer.NewSyncer(db, api, 1400)
 		sync.Start(ctx)

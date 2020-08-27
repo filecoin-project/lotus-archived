@@ -3,6 +3,7 @@ package processor
 import (
 	"bytes"
 	"context"
+	"go.opencensus.io/trace"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -101,6 +102,9 @@ create index if not exists actor_states_code_head_index
 }
 
 func (p *Processor) HandleCommonActorsChanges(ctx context.Context, actors map[cid.Cid]ActorTips) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.HandleCommonActorChanges")
+	defer span.End()
+
 	if err := p.storeActorAddresses(ctx, actors); err != nil {
 		return err
 	}

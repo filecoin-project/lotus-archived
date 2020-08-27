@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"go.opencensus.io/trace"
 	"strconv"
 	"time"
 
@@ -88,6 +89,9 @@ type marketActorInfo struct {
 }
 
 func (p *Processor) HandleMarketChanges(ctx context.Context, marketTips ActorTips) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.HandleMarketChanges")
+	defer span.End()
+
 	marketChanges, err := p.processMarket(ctx, marketTips)
 	if err != nil {
 		log.Fatalw("Failed to process market actors", "error", err)
@@ -104,6 +108,8 @@ func (p *Processor) HandleMarketChanges(ctx context.Context, marketTips ActorTip
 }
 
 func (p *Processor) processMarket(ctx context.Context, marketTips ActorTips) ([]marketActorInfo, error) {
+	ctx, span := trace.StartSpan(ctx, "Processor.processMarket")
+	defer span.End()
 	start := time.Now()
 	defer func() {
 		log.Debugw("Processed Market", "duration", time.Since(start).String())

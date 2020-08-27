@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go.opencensus.io/trace"
 	"strings"
 	"time"
 
@@ -187,6 +188,9 @@ type minerActorInfo struct {
 }
 
 func (p *Processor) HandleMinerChanges(ctx context.Context, minerTips ActorTips) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.HandleMinerChanges")
+	defer span.End()
+
 	minerChanges, err := p.processMiners(ctx, minerTips)
 	if err != nil {
 		log.Fatalw("Failed to process miner actors", "error", err)
@@ -200,6 +204,9 @@ func (p *Processor) HandleMinerChanges(ctx context.Context, minerTips ActorTips)
 }
 
 func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSetKey][]actorInfo) ([]minerActorInfo, error) {
+	ctx, span := trace.StartSpan(ctx, "Processor.processMiners")
+	defer span.End()
+
 	start := time.Now()
 	defer func() {
 		log.Debugw("Processed Miners", "duration", time.Since(start).String())
@@ -247,6 +254,9 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 }
 
 func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.persistMiners")
+	defer span.End()
+
 	start := time.Now()
 	defer func() {
 		log.Debugw("Persisted Miners", "duration", time.Since(start).String())
@@ -255,7 +265,7 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	grp, _ := errgroup.WithContext(ctx)
 
 	grp.Go(func() error {
-		if err := p.storeMinersPower(miners); err != nil {
+		if err := p.storeMinersPower(ctx, miners); err != nil {
 			return err
 		}
 		return nil
@@ -275,7 +285,7 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	dealEvents := make(chan *SectorDealEvent, 8)
 
 	grp.Go(func() error {
-		return p.storePreCommitDealInfo(dealEvents)
+		return p.storePreCommitDealInfo(ctx, dealEvents)
 	})
 
 	grp.Go(func() error {
@@ -304,6 +314,9 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 }
 
 func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerActorInfo, sectorEvents chan<- *MinerSectorsEvent, sectorDeals chan<- *SectorDealEvent) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.storeMinerPreCommitInfo")
+	defer span.End()
+
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -430,6 +443,9 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 }
 
 func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActorInfo, events chan<- *MinerSectorsEvent) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.storeMinerSectorInfo")
+	defer span.End()
+
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -523,6 +539,9 @@ func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActo
 }
 
 func (p *Processor) getMinerPartitionsDifferences(ctx context.Context, miners []minerActorInfo, events chan<- *MinerSectorsEvent) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.storeMinerPartitionsDifferences")
+	defer span.End()
+
 	grp, ctx := errgroup.WithContext(ctx)
 	for _, m := range miners {
 		m := m
@@ -540,6 +559,9 @@ func (p *Processor) getMinerPartitionsDifferences(ctx context.Context, miners []
 }
 
 func (p *Processor) storeMinerSectorEvents(ctx context.Context, sectorEvents, preCommitEvents, partitionEvents <-chan *MinerSectorsEvent) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.storeMinerSectorEvents")
+	defer span.End()
+
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -680,6 +702,13 @@ func (p *Processor) getMinerSectorChanges(ctx context.Context, m minerActorInfo)
 }
 
 func (p *Processor) diffMinerPartitions(ctx context.Context, m minerActorInfo, events chan<- *MinerSectorsEvent) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.diffMinerPartitions")
+	defer span.End()
+
+	if span.IsRecordingEvents() {
+		span.AddAttributes(trace.StringAttribute("miner", m.common.addr.String()))
+	}
+
 	prevMiner, err := p.getMinerStateAt(ctx, m.common.addr, m.common.tsKey)
 	if err != nil {
 		return err
@@ -862,6 +891,9 @@ func (p *Processor) diffPartition(prevPart, curPart miner.Partition) (*Partition
 }
 
 func (p *Processor) storeMinersActorInfoState(ctx context.Context, miners []minerActorInfo) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.storeMinersActorsInfoState")
+	defer span.End()
+
 	start := time.Now()
 	defer func() {
 		log.Debugw("Stored Miners Actor State", "duration", time.Since(start).String())
@@ -916,7 +948,10 @@ func (p *Processor) storeMinersActorInfoState(ctx context.Context, miners []mine
 	return tx.Commit()
 }
 
-func (p *Processor) storePreCommitDealInfo(dealEvents <-chan *SectorDealEvent) error {
+func (p *Processor) storePreCommitDealInfo(ctx context.Context, dealEvents <-chan *SectorDealEvent) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.storePreCommitDealInfo")
+	defer span.End()
+
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -958,7 +993,10 @@ func (p *Processor) storePreCommitDealInfo(dealEvents <-chan *SectorDealEvent) e
 
 }
 
-func (p *Processor) storeMinersPower(miners []minerActorInfo) error {
+func (p *Processor) storeMinersPower(ctx context.Context, miners []minerActorInfo) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.storeMinersPower")
+	defer span.End()
+
 	start := time.Now()
 	defer func() {
 		log.Debugw("Stored Miners Power", "duration", time.Since(start).String())
