@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"go.opencensus.io/trace"
 	"math"
 	"sync"
 	"time"
@@ -94,6 +95,112 @@ func (p *Processor) setupSchemas() error {
 	return nil
 }
 
+func (p *Processor) run(ctx context.Context) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.run")
+	defer span.End()
+
+	loopStart := time.Now()
+	toProcess, err := p.unprocessedBlocks(ctx, p.batch)
+	if err != nil {
+		log.Fatalw("Failed to get unprocessed blocks", "error", err)
+	}
+
+	if len(toProcess) == 0 {
+		log.Info("No unprocessed blocks. Wait then try again...")
+		time.Sleep(time.Second * 30)
+		return nil
+	}
+
+	// TODO special case genesis state handling here to avoid all the special cases that will be needed for it else where
+	// before doing "normal" processing.
+
+	actorChanges, nullRounds, err := p.collectActorChanges(ctx, toProcess)
+	if err != nil {
+		log.Fatalw("Failed to collect actor changes", "error", err)
+	}
+	log.Infow("Collected Actor Changes",
+		"MarketChanges", len(actorChanges[builtin.StorageMarketActorCodeID]),
+		"MinerChanges", len(actorChanges[builtin.StorageMinerActorCodeID]),
+		"RewardChanges", len(actorChanges[builtin.RewardActorCodeID]),
+		"AccountChanges", len(actorChanges[builtin.AccountActorCodeID]),
+		"nullRounds", len(nullRounds))
+
+	grp := sync.WaitGroup{}
+
+	grp.Add(1)
+	go func() {
+		defer grp.Done()
+		if err := p.HandleMarketChanges(ctx, actorChanges[builtin.StorageMarketActorCodeID]); err != nil {
+			log.Errorf("Failed to handle market changes: %w", err)
+			return
+		}
+		log.Info("Processed Market Changes")
+	}()
+
+	grp.Add(1)
+	go func() {
+		defer grp.Done()
+		if err := p.HandleMinerChanges(ctx, actorChanges[builtin.StorageMinerActorCodeID]); err != nil {
+			log.Errorf("Failed to handle miner changes: %w", err)
+			return
+		}
+		log.Info("Processed Miner Changes")
+	}()
+
+	grp.Add(1)
+	go func() {
+		defer grp.Done()
+		if err := p.HandleRewardChanges(ctx, actorChanges[builtin.RewardActorCodeID], nullRounds); err != nil {
+			log.Errorf("Failed to handle reward changes: %w", err)
+			return
+		}
+		log.Info("Processed Reward Changes")
+	}()
+
+	grp.Add(1)
+	go func() {
+		defer grp.Done()
+		if err := p.HandlePowerChanges(ctx, actorChanges[builtin.StoragePowerActorCodeID]); err != nil {
+			log.Errorf("Failed to handle power actor changes: %w", err)
+			return
+		}
+		log.Info("Processes Power Changes")
+	}()
+
+	grp.Add(1)
+	go func() {
+		defer grp.Done()
+		if err := p.HandleMessageChanges(ctx, toProcess); err != nil {
+			log.Errorf("Failed to handle message changes: %w", err)
+			return
+		}
+		log.Info("Processed Message Changes")
+	}()
+
+	grp.Add(1)
+	go func() {
+		defer grp.Done()
+		if err := p.HandleCommonActorsChanges(ctx, actorChanges); err != nil {
+			log.Errorf("Failed to handle common actor changes: %w", err)
+			return
+		}
+		log.Info("Processed CommonActor Changes")
+	}()
+
+	grp.Wait()
+
+	if err := p.markBlocksProcessed(ctx, toProcess); err != nil {
+		log.Fatalw("Failed to mark blocks as processed", "error", err)
+	}
+
+	if err := p.refreshViews(); err != nil {
+		log.Errorw("Failed to refresh views", "error", err)
+	}
+	log.Infow("Processed Batch", "duration", time.Since(loopStart).String())
+
+	return nil
+}
+
 func (p *Processor) Start(ctx context.Context) {
 	log.Debug("Starting Processor")
 
@@ -117,104 +224,6 @@ func (p *Processor) Start(ctx context.Context) {
 				log.Info("Stopping Processor...")
 				return
 			default:
-				loopStart := time.Now()
-				toProcess, err := p.unprocessedBlocks(ctx, p.batch)
-				if err != nil {
-					log.Fatalw("Failed to get unprocessed blocks", "error", err)
-				}
-
-				if len(toProcess) == 0 {
-					log.Info("No unprocessed blocks. Wait then try again...")
-					time.Sleep(time.Second * 30)
-					continue
-				}
-
-				// TODO special case genesis state handling here to avoid all the special cases that will be needed for it else where
-				// before doing "normal" processing.
-
-				actorChanges, nullRounds, err := p.collectActorChanges(ctx, toProcess)
-				if err != nil {
-					log.Fatalw("Failed to collect actor changes", "error", err)
-				}
-				log.Infow("Collected Actor Changes",
-					"MarketChanges", len(actorChanges[builtin.StorageMarketActorCodeID]),
-					"MinerChanges", len(actorChanges[builtin.StorageMinerActorCodeID]),
-					"RewardChanges", len(actorChanges[builtin.RewardActorCodeID]),
-					"AccountChanges", len(actorChanges[builtin.AccountActorCodeID]),
-					"nullRounds", len(nullRounds))
-
-				grp := sync.WaitGroup{}
-
-				grp.Add(1)
-				go func() {
-					defer grp.Done()
-					if err := p.HandleMarketChanges(ctx, actorChanges[builtin.StorageMarketActorCodeID]); err != nil {
-						log.Errorf("Failed to handle market changes: %w", err)
-						return
-					}
-					log.Info("Processed Market Changes")
-				}()
-
-				grp.Add(1)
-				go func() {
-					defer grp.Done()
-					if err := p.HandleMinerChanges(ctx, actorChanges[builtin.StorageMinerActorCodeID]); err != nil {
-						log.Errorf("Failed to handle miner changes: %w", err)
-						return
-					}
-					log.Info("Processed Miner Changes")
-				}()
-
-				grp.Add(1)
-				go func() {
-					defer grp.Done()
-					if err := p.HandleRewardChanges(ctx, actorChanges[builtin.RewardActorCodeID], nullRounds); err != nil {
-						log.Errorf("Failed to handle reward changes: %w", err)
-						return
-					}
-					log.Info("Processed Reward Changes")
-				}()
-
-				grp.Add(1)
-				go func() {
-					defer grp.Done()
-					if err := p.HandlePowerChanges(ctx, actorChanges[builtin.StoragePowerActorCodeID]); err != nil {
-						log.Errorf("Failed to handle power actor changes: %w", err)
-						return
-					}
-					log.Info("Processes Power Changes")
-				}()
-
-				grp.Add(1)
-				go func() {
-					defer grp.Done()
-					if err := p.HandleMessageChanges(ctx, toProcess); err != nil {
-						log.Errorf("Failed to handle message changes: %w", err)
-						return
-					}
-					log.Info("Processed Message Changes")
-				}()
-
-				grp.Add(1)
-				go func() {
-					defer grp.Done()
-					if err := p.HandleCommonActorsChanges(ctx, actorChanges); err != nil {
-						log.Errorf("Failed to handle common actor changes: %w", err)
-						return
-					}
-					log.Info("Processed CommonActor Changes")
-				}()
-
-				grp.Wait()
-
-				if err := p.markBlocksProcessed(ctx, toProcess); err != nil {
-					log.Fatalw("Failed to mark blocks as processed", "error", err)
-				}
-
-				if err := p.refreshViews(); err != nil {
-					log.Errorw("Failed to refresh views", "error", err)
-				}
-				log.Infow("Processed Batch", "duration", time.Since(loopStart).String())
 			}
 		}
 	}()
@@ -230,6 +239,9 @@ func (p *Processor) refreshViews() error {
 }
 
 func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.Cid]*types.BlockHeader) (map[cid.Cid]ActorTips, []types.TipSetKey, error) {
+	ctx, span := trace.StartSpan(ctx, "Processor.collectActorChanges")
+	defer span.End()
+
 	start := time.Now()
 	defer func() {
 		log.Debugw("Collected Actor Changes", "duration", time.Since(start).String())
@@ -327,6 +339,9 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 }
 
 func (p *Processor) unprocessedBlocks(ctx context.Context, batch int) (map[cid.Cid]*types.BlockHeader, error) {
+	ctx, span := trace.StartSpan(ctx, "Processor.unprocessedBlocks")
+	defer span.End()
+
 	start := time.Now()
 	defer func() {
 		log.Debugw("Gathered Blocks to process", "duration", time.Since(start).String())
@@ -378,11 +393,18 @@ where rnk <= $1
 			maxBlock = bh.Height
 		}
 	}
+	if span.IsRecordingEvents() {
+		span.AddAttributes(trace.Int64Attribute("start", int64(minBlock)))
+		span.AddAttributes(trace.Int64Attribute("end", int64(maxBlock)))
+	}
 	log.Infow("Gathered Blocks to Process", "start", minBlock, "end", maxBlock)
 	return out, rows.Close()
 }
 
 func (p *Processor) markBlocksProcessed(ctx context.Context, processed map[cid.Cid]*types.BlockHeader) error {
+	ctx, span := trace.StartSpan(ctx, "Processor.markBlocksProcessed")
+	defer span.End()
+
 	start := time.Now()
 	processedHeight := abi.ChainEpoch(0)
 	defer func() {
