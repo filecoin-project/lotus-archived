@@ -31,6 +31,7 @@ func main() {
 		miscCmd,
 		mpoolCmd,
 		genesisVerifyCmd,
+		chainBalanceCmd,
 	}
 
 	app := &cli.App{
