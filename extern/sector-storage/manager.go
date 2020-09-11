@@ -207,9 +207,13 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	log.Infof("ReadPiece: sector: %d, offset: %d, size: %d, unsealed: %s", sector, offset, size, unsealed.String())
+	log.Infof("acquiring sector lock...")
 	if err := m.index.StorageLock(ctx, sector, stores.FTSealed|stores.FTCache, stores.FTUnsealed); err != nil {
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
+
+	log.Infof("looking for unsealed sector...")
 
 	// passing 0 spt because we only need it when allowFetch is true
 	best, err := m.index.StorageFindSector(ctx, sector, stores.FTUnsealed, 0, false)
@@ -220,13 +224,16 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 	var readOk bool
 	var selector WorkerSelector
 	if len(best) == 0 { // new
+		log.Infof("no unsealed sector found...")
 		selector = newAllocSelector(m.index, stores.FTUnsealed, stores.PathSealing)
 	} else { // append to existing
 		// There is unsealed sector, see if we can read from it
-
+		log.Infof("Found unsealed sector...")
 		selector = newExistingSelector(m.index, sector, stores.FTUnsealed, false)
 
+		log.Infof("Scheduling read of unsealed piece...")
 		err = m.sched.Schedule(ctx, sector, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+			log.Infof("reading unsealed piece: sector: %d, offset: %d, size: %d", sector, offset, size)
 			readOk, err = w.ReadPiece(ctx, sink, sector, offset, size)
 			return err
 		})
@@ -240,11 +247,13 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 	}
 
 	unsealFetch := func(ctx context.Context, worker Worker) error {
+		log.Infof("copy sealed data")
 		if err := worker.Fetch(ctx, sector, stores.FTSealed|stores.FTCache, stores.PathSealing, stores.AcquireCopy); err != nil {
 			return xerrors.Errorf("copy sealed/cache sector data: %w", err)
 		}
 
 		if len(best) > 0 {
+			log.Infof("copy unsealed data")
 			if err := worker.Fetch(ctx, sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove); err != nil {
 				return xerrors.Errorf("copy unsealed sector data: %w", err)
 			}
@@ -253,9 +262,12 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 	}
 
 	if unsealed == cid.Undef {
+		log.Infof("need to unseal data for sector with unsealed cid undefined")
 		return xerrors.Errorf("cannot unseal piece (sector: %d, offset: %d size: %d) - unsealed cid is undefined", sector, offset, size)
 	}
+	log.Infof("scheduling unseal")
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {
+		log.Infof("Unsealing")
 		return w.UnsealPiece(ctx, sector, offset, size, ticket, unsealed)
 	})
 	if err != nil {
@@ -264,7 +276,9 @@ func (m *Manager) ReadPiece(ctx context.Context, sink io.Writer, sector abi.Sect
 
 	selector = newExistingSelector(m.index, sector, stores.FTUnsealed, false)
 
+	log.Infof("scheduling read of unsealed piece")
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTReadUnsealed, selector, schedFetch(sector, stores.FTUnsealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+		log.Info("reading unsealed sector info")
 		readOk, err = w.ReadPiece(ctx, sink, sector, offset, size)
 		return err
 	})
