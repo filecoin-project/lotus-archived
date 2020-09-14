@@ -61,7 +61,7 @@ type SealingStateEvt struct {
 	SectorType   abi.RegisteredSealProof
 	From         sealing.SectorState
 	After        sealing.SectorState
-	Error        string
+	Error        string `json:",omitempty"`
 }
 
 type storageMinerApi interface {
@@ -118,7 +118,7 @@ func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, d
 		maddr:          maddr,
 		worker:         worker,
 		getSealConfig:  gsd,
-		sealingEvtType: journal.J.RegisterEventType("storage", "sealing_states"),
+		sealingEvtType: journal.J.RegisterEventType("storage/sealing", "state_change"),
 	}
 
 	return m, nil
