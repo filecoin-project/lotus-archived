@@ -26,6 +26,7 @@ var (
 	MpoolSize          = stats.Int64("mpoolsize", "Number of messages in mempool", stats.UnitDimensionless)
 	MpoolInboundRate   = stats.Int64("inbound", "Counter for inbound messages", stats.UnitDimensionless)
 	BlockInclusionRate = stats.Int64("inclusion", "Counter for message included in blocks", stats.UnitDimensionless)
+	MsgDropped         = stats.Int64("dropped", "Counter for dropped messages", stats.UnitDimensionless)
 	MsgWaitTime        = stats.Float64("msg-wait-time", "Wait time of messages to make it into a block", stats.UnitSeconds)
 )
 
@@ -64,6 +65,11 @@ var (
 		Measure:     MsgWaitTime,
 		TagKeys:     []tag.Key{MTTag},
 		Aggregation: view.Distribution(10, 30, 60, 120, 240, 600, 1800, 3600),
+	}
+	DroppedView = &view.View{
+		Name:        "msg-dropped",
+		Measure:     MsgDropped,
+		Aggregation: view.Count(),
 	}
 )
 
@@ -175,6 +181,27 @@ var mpoolStatsCmd = &cli.Command{
 						_ = stats.RecordWithTags(ctx, []tag.Mutator{tag.Upsert(MTTag, "wpost")}, MsgWaitTime.M(time.Since(wm.seen).Seconds()))
 						delete(wpostTracker, u.Message.Cid())
 					}
+					fmt.Printf("%s was in the mempool for %s (feecap=%s, prem=%s)\n", u.Message.Cid(), time.Since(mi.seen), u.Message.Message.GasFeeCap, u.Message.Message.GasPremium)
+					stats.Record(ctx, BlockInclusionRate.M(1))
+					stats.Record(ctx, MsgWaitTime.M(time.Since(mi.seen).Seconds()))
+					delete(tracker, u.Message.Cid())
+				case lapi.MpoolDropped:
+					delete(tracker, u.Message.Cid())
+					stats.Record(ctx, MsgDropped.M(1))
+				case lapi.MpoolReplace:
+					oldMsg, ok := tracker[u.Replaces.Cid()]
+					if !ok {
+						tracker[u.Message.Cid()] = &msgInfo{
+							msg:  u.Message,
+							seen: time.Now(),
+						}
+						continue
+					}
+					tracker[u.Message.Cid()] = &msgInfo{
+						msg:  u.Message,
+						seen: oldMsg.seen,
+					}
+					delete(tracker, u.Replaces.Cid())
 				default:
 					return fmt.Errorf("unrecognized mpool update state: %d", u.Type)
 				}

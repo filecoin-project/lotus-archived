@@ -234,6 +234,19 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict bool) (boo
 			m.Message.From, m.Message.Nonce, nextNonce)
 	}
 
+	if !has {
+		mp.changes.Pub(api.MpoolUpdate{
+			Type:    api.MpoolAdd,
+			Message: m,
+		}, localUpdates)
+	} else {
+		mp.changes.Pub(api.MpoolUpdate{
+			Type:     api.MpoolReplace,
+			Message:  m,
+			Replaces: exms,
+		}, localUpdates)
+	}
+
 	ms.nextNonce = nextNonce
 	ms.msgs[m.Message.Nonce] = m
 	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
@@ -696,10 +709,6 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict bool) error {
 		}
 	}
 
-	mp.changes.Pub(api.MpoolUpdate{
-		Type:    api.MpoolAdd,
-		Message: m,
-	}, localUpdates)
 	return nil
 }
 
@@ -857,10 +866,17 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) 
 	}
 
 	if m, ok := mset.msgs[nonce]; ok {
-		mp.changes.Pub(api.MpoolUpdate{
-			Type:    api.MpoolRemove,
-			Message: m,
-		}, localUpdates)
+		if applied {
+			mp.changes.Pub(api.MpoolUpdate{
+				Type:    api.MpoolRemove,
+				Message: m,
+			}, localUpdates)
+		} else {
+			mp.changes.Pub(api.MpoolUpdate{
+				Type:    api.MpoolDropped,
+				Message: m,
+			}, localUpdates)
+		}
 
 		mp.currentSize--
 	}

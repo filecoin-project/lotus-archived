@@ -761,11 +761,14 @@ type MpoolChange int
 const (
 	MpoolAdd MpoolChange = iota
 	MpoolRemove
+	MpoolReplace
+	MpoolDropped
 )
 
 type MpoolUpdate struct {
-	Type    MpoolChange
-	Message *types.SignedMessage
+	Type     MpoolChange
+	Message  *types.SignedMessage
+	Replaces *types.SignedMessage `json:",omitempty"`
 }
 
 type ComputeStateOutput struct {
