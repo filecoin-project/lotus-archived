@@ -397,7 +397,7 @@ func (fsr *fsLockedRepo) List() ([]string, error) {
 	}
 	keys := make([]string, 0, len(files))
 	for _, f := range files {
-		if f.Mode()&0077 != 0 {
+		if badMode(f.Mode()) {
 			return nil, xerrors.Errorf(kstrPermissionMsg, f.Name(), f.Mode())
 		}
 		name, err := base32.RawStdEncoding.DecodeString(f.Name())
@@ -425,7 +425,7 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 		return types.KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, err)
 	}
 
-	if fstat.Mode()&0077 != 0 {
+	if badMode(fstat.Mode()) {
 		return types.KeyInfo{}, xerrors.Errorf(kstrPermissionMsg, name, fstat.Mode())
 	}
 
