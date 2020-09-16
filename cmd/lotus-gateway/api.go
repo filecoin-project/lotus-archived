@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -21,6 +22,11 @@ var (
 
 type GatewayAPI struct {
 	api api.FullNode
+
+	hcLk                sync.Mutex
+	headCache           *types.TipSet
+	headCacheLastUpdate int64
+	updating            bool
 }
 
 func (a *GatewayAPI) getTipsetTimestamp(ctx context.Context, tsk types.TipSetKey) (time.Time, error) {
@@ -63,9 +69,33 @@ func (a *GatewayAPI) StateGetActor(ctx context.Context, actor address.Address, t
 func (a *GatewayAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "ChainHead")
 	defer span.End()
-	// TODO: cache and invalidate cache when timestamp is up (or have internal ChainNotify)
 
-	return a.api.ChainHead(ctx)
+	now := time.Now().Unix()
+
+	a.hcLk.Lock()
+	if a.updating || now-a.headCacheLastUpdate > 1 || now-a.headCache.Timestamp() > 30 {
+		ts := a.headCache
+		a.hcLk.Unlock()
+		return ts, nil
+	}
+	a.updating = true
+	a.hcLk.Unlock()
+
+	span.AddAttributes(trace.BoolAttribute("uncached", true))
+
+	h, err := a.api.ChainHead(ctx)
+	if err != nil {
+		log.Warnf("chain head call failed: %w", err)
+		return nil, err
+	}
+
+	a.hcLk.Lock()
+	a.headCacheLastUpdate = now
+	a.headCache = h
+	a.updating = false
+	a.hcLk.Unlock()
+
+	return h, nil
 }
 
 func (a *GatewayAPI) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {

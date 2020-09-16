@@ -147,6 +147,10 @@ func (ts *TipSet) Key() TipSetKey {
 	return NewTipSetKey(ts.cids...)
 }
 
+func (ts *TipSet) Timestamp() uint64 {
+	return ts.blks[0].Timestamp
+}
+
 func (ts *TipSet) Height() abi.ChainEpoch {
 	return ts.height
 }

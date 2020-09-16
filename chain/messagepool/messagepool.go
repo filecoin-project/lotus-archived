@@ -438,16 +438,16 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
+	msgb, err := m.Serialize()
+	if err != nil {
+		return cid.Undef, err
+	}
+
 	// serialize push access to reduce lock contention
 	mp.addSema <- struct{}{}
 	defer func() {
 		<-mp.addSema
 	}()
-
-	msgb, err := m.Serialize()
-	if err != nil {
-		return cid.Undef, err
-	}
 
 	mp.curTsLk.Lock()
 	publish, err := mp.addTs(m, mp.curTs, true)
