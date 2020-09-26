@@ -10,7 +10,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"runtime"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/urfave/cli/v2"
@@ -50,6 +52,7 @@ var keyinfoCmd = &cli.Command{
 		keyinfoInfoCmd,
 		keyinfoImportCmd,
 		keyinfoVerifyCmd,
+		keyinfoMineVanityCmd,
 	},
 }
 
@@ -447,6 +450,60 @@ var keyinfoNewCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+var keyinfoMineVanityCmd = &cli.Command{
+	Name:        "mine-vanity",
+	Usage:       "create a new keyinfo file of the provided type",
+	Description: "mine a vanity key to match a given pattern",
+	Flags:       []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		pattern := cctx.Args().First()
+		parts := strings.Split(pattern, "|")
+
+		keyType := "secp256k1"
+
+		var plk sync.Mutex
+
+		for i := 0; i < runtime.NumCPU(); i++ {
+			go func() {
+				for {
+					key, err := wallet.GenerateKey(wallet.ActSigType(keyType))
+					if err != nil {
+						panic(err)
+					}
+
+					if matchesPattern(key.Address.String(), parts) {
+						kinfob, err := json.Marshal(key)
+						if err != nil {
+							panic(err)
+						}
+
+						plk.Lock()
+						fmt.Printf("%s - %s\n", key.Address.String(), string(kinfob))
+						plk.Unlock()
+					}
+				}
+			}()
+		}
+
+		var forever chan bool
+		<-forever
+
+		return nil
+	},
+}
+
+func matchesPattern(k string, p []string) bool {
+	lowk := strings.ToLower(k)
+
+	for _, part := range p {
+		if strings.Contains(lowk, strings.ToLower(part)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func SliceIndex(length int, fn func(i int) bool) int {
