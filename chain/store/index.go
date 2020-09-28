@@ -27,18 +27,21 @@ func init() {
 type ChainIndex struct {
 	skipCache *lru.ARCCache
 
-	loadTipSet loadTipSetFunc
+	loadTipSet     loadTipSetFunc
+	loadFirstBlock loadFirstBlockFunc
 
 	skipLength abi.ChainEpoch
 }
 type loadTipSetFunc func(types.TipSetKey) (*types.TipSet, error)
+type loadFirstBlockFunc func(types.TipSetKey) (*types.BlockHeader, error)
 
-func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
+func NewChainIndex(lts loadTipSetFunc, lfb loadFirstBlockFunc) *ChainIndex {
 	sc, _ := lru.NewARC(DefaultChainIndexCacheSize)
 	return &ChainIndex{
-		skipCache:  sc,
-		loadTipSet: lts,
-		skipLength: 20,
+		skipCache:      sc,
+		loadTipSet:     lts,
+		loadFirstBlock: lfb,
+		skipLength:     20,
 	}
 }
 
@@ -154,23 +157,34 @@ func (ci *ChainIndex) walkBack(from *types.TipSet, to abi.ChainEpoch) (*types.Ti
 		return from, nil
 	}
 
-	ts := from
+	tsk := from.Key()
+	firstBlk := from.Blocks()[0]
 
 	for {
-		pts, err := ci.loadTipSet(ts.Parents())
+		ptsk := types.NewTipSetKey(firstBlk.Parents...)
+		pFirstBlk, err := ci.loadFirstBlock(ptsk)
 		if err != nil {
 			return nil, err
 		}
 
-		if to > pts.Height() {
+		if to > pFirstBlk.Height {
 			// in case pts is lower than the epoch we're looking for (null blocks)
 			// return a tipset above that height
+			ts, err := ci.loadTipSet(tsk)
+			if err != nil {
+				return nil, err
+			}
 			return ts, nil
 		}
-		if to == pts.Height() {
+		if to == pFirstBlk.Height {
+			pts, err := ci.loadTipSet(ptsk)
+			if err != nil {
+				return nil, err
+			}
 			return pts, nil
 		}
 
-		ts = pts
+		tsk = ptsk
+		firstBlk = pFirstBlk
 	}
 }

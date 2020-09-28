@@ -139,7 +139,7 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallB
 		evtTypeHeadChange: journal.J.RegisterEventType("sync", "head_change"),
 	}
 
-	ci := NewChainIndex(cs.LoadTipSet)
+	ci := NewChainIndex(cs.LoadTipSet, cs.LoadFirstBlock)
 
 	cs.cindex = ci
 
@@ -485,6 +485,20 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 	cs.tsCache.Add(tsk, ts)
 
 	return ts, nil
+}
+
+func (cs *ChainStore) LoadFirstBlock(tsk types.TipSetKey) (*types.BlockHeader, error) {
+	v, ok := cs.tsCache.Get(tsk)
+	if ok {
+		ts := v.(*types.TipSet)
+		return ts.Blocks()[0], nil
+	}
+
+	for _, c := range tsk.Cids() {
+		return cs.GetBlock(c)
+	}
+
+	return nil, nil
 }
 
 // IsAncestorOf returns true if 'a' is an ancestor of 'b'
