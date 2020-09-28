@@ -157,34 +157,53 @@ func (ci *ChainIndex) walkBack(from *types.TipSet, to abi.ChainEpoch) (*types.Ti
 		return from, nil
 	}
 
-	tsk := from.Key()
-	firstBlk := from.Blocks()[0]
-
+	ts := from
 	for {
-		ptsk := types.NewTipSetKey(firstBlk.Parents...)
-		pFirstBlk, err := ci.loadFirstBlock(ptsk)
+		pts, err := ci.loadTipSet(ts.Parents())
 		if err != nil {
 			return nil, err
 		}
 
-		if to > pFirstBlk.Height {
+		if to > pts.Height() {
 			// in case pts is lower than the epoch we're looking for (null blocks)
 			// return a tipset above that height
-			ts, err := ci.loadTipSet(tsk)
-			if err != nil {
-				return nil, err
-			}
 			return ts, nil
 		}
-		if to == pFirstBlk.Height {
-			pts, err := ci.loadTipSet(ptsk)
-			if err != nil {
-				return nil, err
-			}
+		if to == pts.Height() {
 			return pts, nil
 		}
 
-		tsk = ptsk
-		firstBlk = pFirstBlk
+		ts = pts
 	}
+	//
+	//tsk := from.Key()
+	//firstBlk := from.Blocks()[0]
+	//
+	//for {
+	//	ptsk := types.NewTipSetKey(firstBlk.Parents...)
+	//	pFirstBlk, err := ci.loadFirstBlock(ptsk)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//
+	//	if to > pFirstBlk.Height {
+	//		// in case pts is lower than the epoch we're looking for (null blocks)
+	//		// return a tipset above that height
+	//		ts, err := ci.loadTipSet(tsk)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		return ts, nil
+	//	}
+	//	if to == pFirstBlk.Height {
+	//		pts, err := ci.loadTipSet(ptsk)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		return pts, nil
+	//	}
+	//
+	//	tsk = ptsk
+	//	firstBlk = pFirstBlk
+	//}
 }
