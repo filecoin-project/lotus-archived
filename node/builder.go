@@ -9,8 +9,6 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/hello"
 
 	logging "github.com/ipfs/go-log"
