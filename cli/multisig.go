@@ -263,7 +263,7 @@ var msigInspectCmd = &cli.Command{
 				return txids[i] < txids[j]
 			})
 
-			w := tabwriter.NewWriter(os.Stdout, 8, 4, 0, ' ', 0)
+			w := tabwriter.NewWriter(os.Stdout, 8, 4, 2, ' ', 0)
 			fmt.Fprintf(w, "ID\tState\tApprovals\tTo\tValue\tMethod\tParams\n")
 			for _, txid := range txids {
 				tx := pending[txid]
