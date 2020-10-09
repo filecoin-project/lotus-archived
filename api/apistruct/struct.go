@@ -190,6 +190,7 @@ type FullNodeStruct struct {
 		StateReadState                     func(context.Context, address.Address, types.TipSetKey) (*api.ActorState, error)                                    `perm:"read"`
 		StateMsgGasCost                    func(context.Context, cid.Cid, types.TipSetKey) (*api.MsgGasCost, error)                                            `perm:"read"`
 		StateWaitMsg                       func(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error)                                   `perm:"read"`
+		StateWaitMsgLimited                func(context.Context, cid.Cid, uint64, abi.ChainEpoch) (*api.MsgLookup, error)                                      `perm:"read"`
 		StateSearchMsg                     func(context.Context, cid.Cid) (*api.MsgLookup, error)                                                              `perm:"read"`
 		StateListMiners                    func(context.Context, types.TipSetKey) ([]address.Address, error)                                                   `perm:"read"`
 		StateListActors                    func(context.Context, types.TipSetKey) ([]address.Address, error)                                                   `perm:"read"`
@@ -370,6 +371,23 @@ type WalletStruct struct {
 		WalletExport func(context.Context, address.Address) (*types.KeyInfo, error)                         `perm:"admin"`
 		WalletImport func(context.Context, *types.KeyInfo) (address.Address, error)                         `perm:"admin"`
 		WalletDelete func(context.Context, address.Address) error                                           `perm:"write"`
+	}
+}
+
+type GatewayStruct struct {
+	Internal struct {
+		// TODO: does the gateway need perms?
+		ChainGetTipSet          func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+		ChainGetTipSetByHeight  func(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+		ChainHead               func(ctx context.Context) (*types.TipSet, error)
+		GasEstimateMessageGas   func(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
+		MpoolPush               func(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
+		MsigGetAvailableBalance func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
+		MsigGetVested           func(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
+		StateAccountKey         func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+		StateGetActor           func(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
+		StateLookupID           func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+		StateWaitMsg            func(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error)
 	}
 }
 
@@ -864,6 +882,10 @@ func (c *FullNodeStruct) StateMsgGasCost(ctx context.Context, msgc cid.Cid, tsk 
 
 func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid, confidence uint64) (*api.MsgLookup, error) {
 	return c.Internal.StateWaitMsg(ctx, msgc, confidence)
+}
+
+func (c *FullNodeStruct) StateWaitMsgLimited(ctx context.Context, msgc cid.Cid, confidence uint64, limit abi.ChainEpoch) (*api.MsgLookup, error) {
+	return c.Internal.StateWaitMsgLimited(ctx, msgc, confidence, limit)
 }
 
 func (c *FullNodeStruct) StateSearchMsg(ctx context.Context, msgc cid.Cid) (*api.MsgLookup, error) {
@@ -1412,8 +1434,53 @@ func (c *WalletStruct) WalletDelete(ctx context.Context, addr address.Address) e
 	return c.Internal.WalletDelete(ctx, addr)
 }
 
+func (g GatewayStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	return g.Internal.ChainHead(ctx)
+}
+
+func (g GatewayStruct) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+	return g.Internal.ChainGetTipSet(ctx, tsk)
+}
+
+func (g GatewayStruct) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	return g.Internal.ChainGetTipSetByHeight(ctx, h, tsk)
+}
+
+func (g GatewayStruct) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
+	return g.Internal.GasEstimateMessageGas(ctx, msg, spec, tsk)
+}
+
+func (g GatewayStruct) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
+	return g.Internal.MpoolPush(ctx, sm)
+}
+
+func (g GatewayStruct) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	return g.Internal.MsigGetAvailableBalance(ctx, addr, tsk)
+}
+
+func (g GatewayStruct) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
+	return g.Internal.MsigGetVested(ctx, addr, start, end)
+}
+
+func (g GatewayStruct) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	return g.Internal.StateAccountKey(ctx, addr, tsk)
+}
+
+func (g GatewayStruct) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
+	return g.Internal.StateGetActor(ctx, actor, ts)
+}
+
+func (g GatewayStruct) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	return g.Internal.StateLookupID(ctx, addr, tsk)
+}
+
+func (g GatewayStruct) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
+	return g.Internal.StateWaitMsg(ctx, msg, confidence)
+}
+
 var _ api.Common = &CommonStruct{}
 var _ api.FullNode = &FullNodeStruct{}
 var _ api.StorageMiner = &StorageMinerStruct{}
 var _ api.WorkerAPI = &WorkerStruct{}
+var _ api.GatewayAPI = &GatewayStruct{}
 var _ api.WalletAPI = &WalletStruct{}
