@@ -80,4 +80,8 @@ func TestGasOutputs(t *testing.T) {
 func TestCompareWithJS(t *testing.T) {
 	output := ComputeGasOutputs(435268, 541585, types.NewInt(957893300), types.NewInt(10076485367), types.NewInt(136364))
 	t.Logf("%+v", output)
+	output = ComputeGasOutputs(8092030, 10115037, types.NewInt(100), types.NewInt(150825), types.NewInt(149771))
+	t.Logf("%+v", output)
+	output = ComputeGasOutputs(44955257, 55745321, types.NewInt(1089215916), types.NewInt(896936264), types.NewInt(116155))
+	t.Logf("%+v", output)
 }
