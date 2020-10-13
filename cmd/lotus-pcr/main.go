@@ -41,6 +41,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	cli2 "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/tools/stats"
 )
 
@@ -157,6 +158,11 @@ var findMinersCmd = &cli.Command{
 			Usage: "include control balance",
 			Value: false,
 		},
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "Specify the tipset",
+			Value: "@head",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
@@ -182,10 +188,12 @@ var findMinersCmd = &cli.Command{
 			threshold: types.FromFil(threshold),
 		}
 
-		refundTipset, err := api.ChainHead(ctx)
+		refundTipset, err := cli2.LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
+
+		fmt.Printf("%s\n", refundTipset)
 
 		balanceRefund, err := rf.FindMiners(ctx, refundTipset, NewMinersRefund(), owner, worker, control)
 		if err != nil {
@@ -707,7 +715,7 @@ func (r *refunder) FindMiners(ctx context.Context, tipset *types.TipSet, refunds
 
 		refunds.Track(maddr, totalAvailableBalance)
 
-		log.Debugw("processing miner", "miner", maddr, "sectors", "available_balance", totalAvailableBalance)
+		log.Debugw("processing miner", "miner", maddr, "available_balance", totalAvailableBalance, "miner_balance", minerAvailableBalance, "wallet_balance_total", addrSum)
 	}
 
 	return refunds, nil
