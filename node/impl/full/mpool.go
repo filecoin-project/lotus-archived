@@ -1,17 +1,23 @@
 package full
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"reflect"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/messagesigner"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -59,6 +65,32 @@ func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQ
 	}
 
 	return a.Mpool.SelectMessages(ts, ticketQuality)
+}
+
+func (a *MpoolAPI) MpoolEncodeParams(ctx context.Context, to address.Address, method abi.MethodNum, param json.RawMessage) ([]byte, error) {
+	act, err := a.StateManagerAPI.LoadActorTsk(ctx, to, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("loading actor: %w", err)
+	}
+
+	methodMeta, found := stmgr.MethodsMap[act.Code][method]
+	if !found {
+		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
+	}
+
+	re := reflect.New(methodMeta.Params.Elem())
+	err = json.Unmarshal(param, re.Interface())
+	if err != nil {
+		return nil, xerrors.Errorf("unmarshaling into param type %T: %w", re.Interface(), err)
+	}
+
+	p := re.Interface().(cbg.CBORMarshaler)
+	buf := &bytes.Buffer{}
+	if err := p.MarshalCBOR(buf); err != nil {
+		return nil, xerrors.Errorf("marshaling CBOR: %w", err)
+	}
+
+	return buf.Bytes(), nil
 }
 
 func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {

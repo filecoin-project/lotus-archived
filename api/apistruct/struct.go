@@ -2,6 +2,7 @@ package apistruct
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"time"
 
@@ -114,6 +115,8 @@ type FullNodeStruct struct {
 		SyncUnmarkAllBad   func(ctx context.Context) error                              `perm:"admin"`
 		SyncCheckBad       func(ctx context.Context, bcid cid.Cid) (string, error)      `perm:"read"`
 		SyncValidateTipset func(ctx context.Context, tsk types.TipSetKey) (bool, error) `perm:"read"`
+
+		MpoolEncodeParams func(ctx context.Context, to address.Address, method abi.MethodNum, param json.RawMessage) ([]byte, error) `perm:"read"`
 
 		MpoolGetConfig func(context.Context) (*types.MpoolConfig, error) `perm:"read"`
 		MpoolSetConfig func(context.Context, *types.MpoolConfig) error   `perm:"write"`
@@ -570,6 +573,10 @@ func (c *FullNodeStruct) GasEstimateMessageGas(ctx context.Context, msg *types.M
 
 func (c *FullNodeStruct) GasEstimateGasLimit(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (int64, error) {
 	return c.Internal.GasEstimateGasLimit(ctx, msg, tsk)
+}
+
+func (c *FullNodeStruct) MpoolEncodeParams(ctx context.Context, to address.Address, method abi.MethodNum, param json.RawMessage) ([]byte, error) {
+	return c.Internal.MpoolEncodeParams(ctx, to, method, param)
 }
 
 func (c *FullNodeStruct) MpoolGetConfig(ctx context.Context) (*types.MpoolConfig, error) {
