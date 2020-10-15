@@ -49,6 +49,7 @@ func main() {
 		electionCmd,
 		rpcCmd,
 		cidCmd,
+		mpoolWatchCmd,
 	}
 
 	app := &cli.App{

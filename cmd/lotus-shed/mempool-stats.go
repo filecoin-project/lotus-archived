@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
@@ -271,4 +272,61 @@ func ageStats(ages []time.Duration) *ageStat {
 	st.Perc95 = ages[p95]
 
 	return &st
+}
+
+var mpoolWatchCmd = &cli.Command{
+	Name:  "mpool-watch",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		logging.SetLogLevel("rpc", "ERROR")
+
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		updates, err := api.MpoolSub(ctx)
+		if err != nil {
+			return err
+		}
+
+		var seen int
+		var matches int
+		tick := time.Tick(time.Second * 5)
+		for {
+			select {
+			case u, ok := <-updates:
+				if !ok {
+					return fmt.Errorf("connection with lotus node broke")
+				}
+				switch u.Type {
+				case lapi.MpoolAdd:
+					seen++
+
+					act, err := api.StateGetActor(ctx, u.Message.Message.To, types.EmptyTSK)
+					if err != nil {
+						log.Error(err)
+						continue
+					}
+
+					if builtin.IsStorageMinerActor(act.Code) && u.Message.Message.Method == 15 {
+						matches++
+						fmt.Printf("Matching message found! (cid = %s)\n", u.Message.Cid())
+						data, err := json.MarshalIndent(u.Message.Message, "", "  ")
+						if err != nil {
+							return err
+						}
+
+						fmt.Println(string(data))
+					}
+
+				}
+			case <-tick:
+				fmt.Printf("Seen %d messages, %d matches\n", seen, matches)
+			}
+		}
+	},
 }

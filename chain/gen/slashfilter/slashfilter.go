@@ -25,43 +25,45 @@ func New(dstore ds.Batching) *SlashFilter {
 	}
 }
 
-func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+// A = bh
+// B = res[0]
+func (f *SlashFilter) CheckBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) ([]cid.Cid, error) {
 	epochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, bh.Height))
 	{
 		// double-fork mining (2 blocks at one epoch)
-		if err := checkFault(f.byEpoch, epochKey, bh, "double-fork mining faults"); err != nil {
-			return err
+		if witness, err := checkFault(f.byEpoch, epochKey, bh, "double-fork mining faults"); err != nil {
+			return []cid.Cid{witness}, err
 		}
 	}
 
 	parentsKey := ds.NewKey(fmt.Sprintf("/%s/%x", bh.Miner, types.NewTipSetKey(bh.Parents...).Bytes()))
 	{
 		// time-offset mining faults (2 blocks with the same parents)
-		if err := checkFault(f.byParents, parentsKey, bh, "time-offset mining faults"); err != nil {
-			return err
+		if witness, err := checkFault(f.byParents, parentsKey, bh, "time-offset mining faults"); err != nil {
+			return []cid.Cid{witness}, err
 		}
 	}
 
-	{
+	if parentEpoch != -1 {
 		// parent-grinding fault (didn't mine on top of our own block)
 
 		// First check if we have mined a block on the parent epoch
 		parentEpochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, parentEpoch))
 		have, err := f.byEpoch.Has(parentEpochKey)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if have {
 			// If we had, make sure it's in our parent tipset
 			cidb, err := f.byEpoch.Get(parentEpochKey)
 			if err != nil {
-				return xerrors.Errorf("getting other block cid: %w", err)
+				return nil, xerrors.Errorf("getting other block cid: %w", err)
 			}
 
 			_, parent, err := cid.CidFromBytes(cidb)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			var found bool
@@ -72,45 +74,50 @@ func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpo
 			}
 
 			if !found {
-				return xerrors.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				return nil, xerrors.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
 			}
 		}
 	}
 
 	if err := f.byParents.Put(parentsKey, bh.Cid().Bytes()); err != nil {
-		return xerrors.Errorf("putting byEpoch entry: %w", err)
+		return nil, xerrors.Errorf("putting byEpoch entry: %w", err)
 	}
 
 	if err := f.byEpoch.Put(epochKey, bh.Cid().Bytes()); err != nil {
-		return xerrors.Errorf("putting byEpoch entry: %w", err)
+		return nil, xerrors.Errorf("putting byEpoch entry: %w", err)
 	}
 
-	return nil
+	return nil, nil
 }
 
-func checkFault(t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType string) error {
+func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+	_, err := f.CheckBlock(bh, parentEpoch)
+	return err
+}
+
+func checkFault(t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType string) (cid.Cid, error) {
 	fault, err := t.Has(key)
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	if fault {
 		cidb, err := t.Get(key)
 		if err != nil {
-			return xerrors.Errorf("getting other block cid: %w", err)
+			return cid.Undef, xerrors.Errorf("getting other block cid: %w", err)
 		}
 
 		_, other, err := cid.CidFromBytes(cidb)
 		if err != nil {
-			return err
+			return cid.Undef, err
 		}
 
 		if other == bh.Cid() {
-			return nil
+			return cid.Undef, nil
 		}
 
-		return xerrors.Errorf("produced block would trigger '%s' consensus fault; miner: %s; bh: %s, other: %s", faultType, bh.Miner, bh.Cid(), other)
+		return other, xerrors.Errorf("produced block would trigger '%s' consensus fault; miner: %s; bh: %s, other: %s", faultType, bh.Miner, bh.Cid(), other)
 	}
 
-	return nil
+	return cid.Undef, nil
 }

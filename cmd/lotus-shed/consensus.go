@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -9,16 +11,29 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/ipfs/go-cid"
+	levelds "github.com/ipfs/go-ds-leveldb"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/multierr"
+	"golang.org/x/xerrors"
 )
 
 var consensusCmd = &cli.Command{
@@ -27,6 +42,8 @@ var consensusCmd = &cli.Command{
 	Flags: []cli.Flag{},
 	Subcommands: []*cli.Command{
 		consensusCheckCmd,
+		consensusWatchSlashableCmd,
+		consnesusRunSlash,
 	},
 }
 
@@ -284,4 +301,276 @@ var consensusCheckCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+type ToSlash struct {
+	Miner address.Address
+	Epoch abi.ChainEpoch
+	B1    cid.Cid
+	B2    cid.Cid
+}
+
+var consensusWatchSlashableCmd = &cli.Command{
+	Name:  "watch-slashable",
+	Usage: "Watch incoming blocks for blocks which can be slashed",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "db-dir",
+			Value: "slashwatch",
+		},
+		&cli.StringFlag{
+			Name:  "slashq",
+			Value: "slashq.ndjson",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		p, err := homedir.Expand(cctx.String("db-dir"))
+		if err != nil {
+			return xerrors.Errorf("expand db dir: %w", err)
+		}
+		ds, err := levelds.NewDatastore(p, &levelds.Options{
+			Compression: ldbopts.NoCompression,
+			NoSync:      false,
+			Strict:      ldbopts.StrictAll,
+			ReadOnly:    false,
+		})
+		if err != nil {
+			return xerrors.Errorf("open leveldb: %w", err)
+		}
+
+		p, err = homedir.Expand(cctx.String("slashq"))
+		if err != nil {
+			return xerrors.Errorf("opening slashq: %w", err)
+		}
+		slashqFile, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		jenc := json.NewEncoder(slashqFile)
+
+		defer ds.Close() // nolint
+		sf := slashfilter.New(ds)
+		sub, err := api.SyncIncomingBlocks(ctx)
+		if err != nil {
+			return err
+		}
+		arc, _ := lru.NewARC(10240)
+
+		buf := make(chan *types.BlockHeader, 20)
+		go func() {
+			for bh := range sub {
+				select {
+				case buf <- bh:
+				case <-ctx.Done():
+					close(buf)
+					return
+				}
+			}
+			close(buf)
+		}()
+		var ok, all, dupe, slashable int
+		for bh := range buf {
+			if all%30 == 0 {
+				log.Infow("Processed blocks", "ok-count", ok, "slashable", slashable, "all-count", all, "dupes", dupe)
+			}
+			all++
+			_, seen := arc.Get(bh.Cid())
+			if seen {
+				dupe++
+			}
+			arc.Add(bh.Cid(), bh)
+
+			var parH abi.ChainEpoch = -1
+			{
+				var merr error
+				var par *types.BlockHeader
+				for _, p := range bh.Parents {
+					parI, ok := arc.Get(p)
+					if ok {
+						par = parI.(*types.BlockHeader)
+						break
+					}
+				}
+
+				if par == nil {
+					for _, p := range bh.Parents {
+						par, err = api.ChainGetBlock(ctx, p)
+						if !multierr.AppendInto(&merr, err) {
+							break
+						}
+					}
+				}
+
+				if par == nil {
+					log.Infow("Getting parents failed", "block", bh.Cid(), "miner",
+						bh.Miner, "error", merr)
+				} else {
+					parH = par.Height
+				}
+			}
+
+			witness, err := sf.CheckBlock(bh, parH)
+			if err != nil {
+				slashable++
+				log.Warnw("SLASH ERROR!", "block", bh.Cid(), "miner", bh.Miner, "error", err, "witness", witness)
+				err := jenc.Encode(ToSlash{
+					Miner: bh.Miner,
+					Epoch: bh.Height,
+					B1:    bh.Cid(),
+					B2:    witness[0],
+				})
+				if err != nil {
+					log.Errorf("got error writing slash: %+v", err)
+				}
+				slashqFile.Sync()
+
+				continue
+			}
+			ok++
+		}
+		return nil
+	},
+}
+
+var consnesusRunSlash = &cli.Command{
+	Name:  "run-slashq",
+	Usage: "Watch incoming blocks for blocks which can be slashed",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "from",
+		},
+		&cli.StringFlag{
+			Name:  "slashq",
+			Value: "slashq.ndjson",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.IsSet("from") {
+			return xerrors.Errorf("from has to be set")
+		}
+		from, err := address.NewFromString(cctx.String("from"))
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		p, err := homedir.Expand(cctx.String("slashq"))
+		if err != nil {
+			return xerrors.Errorf("opening slashq: %w", err)
+		}
+
+		for {
+			err := runSlashing(ctx, from, p, api)
+			if err != nil {
+				log.Errorf("got error from slashing: %+v", err)
+			}
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(5 * time.Second):
+			}
+		}
+	},
+}
+
+func runSlashing(ctx context.Context, from address.Address, fPath string, api api.FullNode) error {
+	const forward = 700
+
+	slashqFile, err := os.OpenFile(fPath, os.O_RDONLY, 0666)
+	defer slashqFile.Close()
+	jenc := json.NewDecoder(slashqFile)
+
+	ts, err := api.ChainHead(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting tipset: %w", err)
+	}
+
+	for {
+		var slashC ToSlash
+		err := jenc.Decode(&slashC)
+		if err != nil {
+			if !xerrors.Is(err, io.EOF) {
+				log.Warn("reading to slash file: %+v", err)
+			}
+			break
+		}
+		if slashC.Epoch+forward > ts.Height() {
+			log.Infof("skipping %s, still waiting %d < %d (%s)", slashC.Miner, slashC.Epoch+forward, ts.Height(),
+				time.Duration(slashC.Epoch+forward-ts.Height())*time.Duration(build.BlockDelaySecs)*time.Second)
+			continue
+		}
+
+		minfo, err := api.StateMinerInfo(ctx, slashC.Miner, types.EmptyTSK)
+		if err != nil {
+			log.Warnf("MinerInfo failed: %+v", err)
+			continue
+		}
+		if slashC.Epoch < minfo.ConsensusFaultElapsed {
+			continue
+		}
+
+		b1, err := api.ChainGetBlock(ctx, slashC.B1)
+		if err != nil {
+			return xerrors.Errorf("getting block 1, miner %s, epoch %d: %w", slashC.Miner, slashC.Epoch, err)
+		}
+
+		b2, err := api.ChainGetBlock(ctx, slashC.B2)
+		if err != nil {
+			return xerrors.Errorf("getting block 2: %w", err)
+		}
+
+		bh1, err := cborutil.Dump(b1)
+		if err != nil {
+			return err
+		}
+
+		bh2, err := cborutil.Dump(b2)
+		if err != nil {
+			return err
+		}
+
+		params := miner.ReportConsensusFaultParams{
+			BlockHeader1: bh1,
+			BlockHeader2: bh2,
+		}
+
+		enc, err := actors.SerializeParams(&params)
+		if err != nil {
+			return err
+		}
+
+		msg := &types.Message{
+			To:     slashC.Miner,
+			From:   from,
+			Value:  types.NewInt(0),
+			Method: builtin.MethodsMiner.ReportConsensusFault,
+			Params: enc,
+		}
+
+		log.Infow("slashing", "toSlash", slashC)
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return err
+		}
+		msgRes, err := api.StateWaitMsg(ctx, smsg.Cid(), 1)
+		if err != nil {
+			return err
+		}
+		if msgRes.Receipt.ExitCode != 0 {
+			log.Warnf("got %d from msg: %s", msgRes.Receipt.ExitCode, smsg.Cid())
+		}
+	}
+
+	return nil
+
 }
