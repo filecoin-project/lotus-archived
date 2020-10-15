@@ -785,8 +785,55 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, 
 		return true
 	}
 
+	fromID := address.Undef
+	if match.From == address.Undef {
+		fromID, err = a.StateManager.LookupID(ctx, match.From, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("looking up id address for: %s: %w", match.From, err)
+		}
+	}
+
 	var out []cid.Cid
+	msgs, err := a.Chain.MessagesForTipset(ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get messages for tipset (%s): %w", ts.Key(), err)
+	}
+
+	for _, msg := range msgs {
+		if matchFunc(msg.VMMessage()) {
+			out = append(out, msg.Cid())
+		}
+	}
+
+	var curActor *types.Actor
+	if fromID != address.Undef {
+		curActor, err = a.StateManager.LoadActor(ctx, fromID, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("getting actor state: %w", err)
+		}
+	}
 	for ts.Height() >= toheight {
+		if ts.Height() == 0 {
+			break
+		}
+
+		ts, err = a.Chain.LoadTipSet(ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("loading next tipset: %w", err)
+		}
+
+		if fromID != address.Undef {
+			newAct, err := a.StateManager.LoadActor(ctx, fromID, ts)
+			if err != nil {
+				return nil, xerrors.Errorf("getting actor state: %w", err)
+			}
+			curActor, newAct = newAct, curActor
+			if newAct.Nonce == curActor.Nonce {
+				// exit if no change in
+				continue
+			}
+		}
+
 		msgs, err := a.Chain.MessagesForTipset(ts)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for tipset (%s): %w", ts.Key(), err)
@@ -797,17 +844,6 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, 
 				out = append(out, msg.Cid())
 			}
 		}
-
-		if ts.Height() == 0 {
-			break
-		}
-
-		next, err := a.Chain.LoadTipSet(ts.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("loading next tipset: %w", err)
-		}
-
-		ts = next
 	}
 
 	return out, nil
