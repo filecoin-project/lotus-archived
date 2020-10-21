@@ -37,16 +37,6 @@ const (
 	fsKeystore      = "keystore"
 )
 
-type RepoType int
-
-const (
-	_                 = iota // Default is invalid
-	FullNode RepoType = iota
-	StorageMiner
-	Worker
-	Wallet
-)
-
 func defConfForType(t RepoType) interface{} {
 	switch t {
 	case FullNode:

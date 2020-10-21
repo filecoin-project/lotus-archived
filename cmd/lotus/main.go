@@ -63,6 +63,12 @@ func main() {
 				Hidden:  true,
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
+			&cli.StringFlag{
+				Name:    "blockstore",
+				EnvVars: []string{"LOTUS_BLOCKSTORE"},
+				Hidden:  true,
+				Value:   "fs",
+			},
 		},
 
 		Commands: append(local, lcli.Commands...),

@@ -199,6 +199,10 @@ func (mem *MemRepo) Lock(t RepoType) (LockedRepo, error) {
 	}, nil
 }
 
+func (mem *MemRepo) Init(t RepoType) error {
+	return nil
+}
+
 func (lmem *lockedMemRepo) checkToken() error {
 	lmem.RLock()
 	defer lmem.RUnlock()

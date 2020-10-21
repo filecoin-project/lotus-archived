@@ -186,13 +186,18 @@ var DaemonCmd = &cli.Command{
 			}
 		}
 
-		r, err := repo.NewFS(cctx.String("repo"))
+		r, err := repo.New(cctx.String("blockstore"), cctx.String("repo"))
 		if err != nil {
-			return xerrors.Errorf("opening fs repo: %w", err)
+			return xerrors.Errorf("opening repo: %w", err)
 		}
 
 		if cctx.String("config") != "" {
-			r.SetConfigPath(cctx.String("config"))
+			fsr, ok := r.(*repo.FsRepo)
+			if ok {
+				fsr.SetConfigPath(cctx.String("config"))
+			} else {
+				return xerrors.Errorf("cannot set config on non-fs repo")
+			}
 		}
 
 		if err := r.Init(repo.FullNode); err != nil && err != repo.ErrRepoExists {

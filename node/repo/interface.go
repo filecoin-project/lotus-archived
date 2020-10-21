@@ -20,6 +20,9 @@ var (
 )
 
 type Repo interface {
+	// Init initializes/opens the repository expecting a specific type of use.
+	Init(t RepoType) error
+
 	// APIEndpoint returns multiaddress for communication with Lotus API
 	APIEndpoint() (multiaddr.Multiaddr, error)
 
@@ -29,6 +32,16 @@ type Repo interface {
 	// Lock locks the repo for exclusive use.
 	Lock(RepoType) (LockedRepo, error)
 }
+
+type RepoType int
+
+const (
+	_                 = iota // Default is invalid
+	FullNode RepoType = iota
+	StorageMiner
+	Worker
+	Wallet
+)
 
 type LockedRepo interface {
 	// Close closes repo and removes lock.
