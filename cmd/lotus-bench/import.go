@@ -133,10 +133,15 @@ var importBenchCmd = &cli.Command{
 
 		var bs blockstore.Blockstore
 		switch cctx.String("blockstore-type") {
-		case "sqlite":
+		case "sqlite3":
+			log.Info("using sqlite3 blockstore")
 			bs, err = sqlite3bs.Open(tdir)
+			if err != nil {
+				return err
+			}
 
 		case "badger":
+			log.Info("using badger blockstore")
 			ds, err := badger.NewDatastore(tdir, &bdgOpt)
 			if err != nil {
 				return err
@@ -145,6 +150,7 @@ var importBenchCmd = &cli.Command{
 			bs = blockstore.NewBlockstore(ds)
 
 		case "pebble":
+			log.Info("using pebble blockstore")
 			cache := 512
 			ds, err := pebbleds.NewDatastore(tdir, &pebble.Options{
 				// Pebble has a single combined cache area and the write
