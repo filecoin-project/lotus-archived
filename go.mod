@@ -58,6 +58,7 @@ require (
 	github.com/ipfs/go-bitswap v0.2.20
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.4-0.20200624145336-a978cec6e834
+	github.com/ipfs/go-bs-sqlite3 v0.0.0-20201021184048-cac50bef55bb
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-cidutil v0.0.2
 	github.com/ipfs/go-datastore v0.4.5
