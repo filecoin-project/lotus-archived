@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	sqlite3bs "github.com/ipfs/go-bs-sqlite3"
 	"github.com/ipld/go-car"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -89,6 +90,11 @@ var importBenchCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "only-import",
 		},
+		&cli.StringFlag{
+			Name:  "blockstore-type",
+			Usage: "blockstore type; supported: 'badger', 'pebble' or 'sqlite3'",
+			Value: "badger",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		vm.BatchSealVerifyParallelism = cctx.Int("batch-seal-verify-threads")
@@ -125,10 +131,22 @@ var importBenchCmd = &cli.Command{
 		bdgOpt.Options.Truncate = true
 		bdgOpt.Options.DetectConflicts = false
 
-		var bds datastore.Batching
-		if false {
+		var bs blockstore.Blockstore
+		switch cctx.String("blockstore-type") {
+		case "sqlite":
+			bs, err = sqlite3bs.Open(tdir)
+
+		case "badger":
+			ds, err := badger.NewDatastore(tdir, &bdgOpt)
+			if err != nil {
+				return err
+			}
+			defer ds.Close() //nolint:errcheck
+			bs = blockstore.NewBlockstore(ds)
+
+		case "pebble":
 			cache := 512
-			bds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
+			ds, err := pebbleds.NewDatastore(tdir, &pebble.Options{
 				// Pebble has a single combined cache area and the write
 				// buffers are taken from this too. Assign all available
 				// memory allowance for cache.
@@ -147,24 +165,26 @@ var importBenchCmd = &cli.Command{
 				},
 				Logger: log,
 			})
-		} else {
-			bds, err = badger.NewDatastore(tdir, &bdgOpt)
+			if err != nil {
+				return err
+			}
+			defer ds.Close() //nolint:errcheck
+			bs = blockstore.NewBlockstore(ds)
 		}
-		if err != nil {
-			return err
-		}
-		defer bds.Close() //nolint:errcheck
 
-		bs := blockstore.NewBlockstore(bds)
+		// close the blockstore if it supports closing (sqlite3 does).
+		if cl, ok := bs.(io.Closer); ok {
+			defer cl.Close()
+		}
+
 		cacheOpts := blockstore.DefaultCacheOpts()
 		cacheOpts.HasBloomFilterSize = 0
-
 		cbs, err := blockstore.CachedBlockstore(context.TODO(), bs, cacheOpts)
 		if err != nil {
 			return err
 		}
 		bs = cbs
-		ds := datastore.NewMapDatastore()
+		mapds := datastore.NewMapDatastore()
 
 		var verifier ffiwrapper.Verifier = ffiwrapper.ProofVerifier
 		if cctx.IsSet("syscall-cache") {
@@ -183,7 +203,7 @@ var importBenchCmd = &cli.Command{
 			return nil
 		}
 
-		cs := store.NewChainStore(bs, ds, vm.Syscalls(verifier), nil)
+		cs := store.NewChainStore(bs, mapds, vm.Syscalls(verifier), nil)
 		stm := stmgr.NewStateManager(cs)
 
 		if cctx.Bool("global-profile") {
