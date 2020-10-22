@@ -135,7 +135,7 @@ var importBenchCmd = &cli.Command{
 		switch cctx.String("blockstore-type") {
 		case "sqlite3":
 			log.Info("using sqlite3 blockstore")
-			bs, err = sqlite3bs.Open(tdir)
+			bs, err = sqlite3bs.Open(tdir, sqlite3bs.Options{})
 			if err != nil {
 				return err
 			}

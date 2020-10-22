@@ -496,6 +496,10 @@ github.com/ipfs/go-blockservice v0.1.4-0.20200624145336-a978cec6e834/go.mod h1:O
 github.com/ipfs/go-bs-sqlite3 v0.0.0-20201021134804-b85e69a87aef h1:hahJWensN2xoVoKoT/8LQ8WT+sjAMnY9VXKluwb/qmI=
 github.com/ipfs/go-bs-sqlite3 v0.0.0-20201021184048-cac50bef55bb h1:94XwDNZaBDb/XcL/edtPFb4Vs0JuNCYWQsRf3/UA5A4=
 github.com/ipfs/go-bs-sqlite3 v0.0.0-20201021184048-cac50bef55bb/go.mod h1:ZQ+8gBSj5DbcYguEvmVDRvCd8liYJ9NKK5VXUw304OE=
+github.com/ipfs/go-bs-sqlite3 v0.0.0-20201022090822-dad5bebdb06d h1:EqrzRUa8hxvusu1h2pyR2XNeAtJL+G34QCunzma9ZcM=
+github.com/ipfs/go-bs-sqlite3 v0.0.0-20201022090822-dad5bebdb06d/go.mod h1:ZQ+8gBSj5DbcYguEvmVDRvCd8liYJ9NKK5VXUw304OE=
+github.com/ipfs/go-bs-sqlite3 v0.0.0-20201022091201-533ddf8d32ed h1:LeyXb7nXhOjMMRHJaOJZLl8LcG0xGwGwRiObGexEOA0=
+github.com/ipfs/go-bs-sqlite3 v0.0.0-20201022091201-533ddf8d32ed/go.mod h1:ZQ+8gBSj5DbcYguEvmVDRvCd8liYJ9NKK5VXUw304OE=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.3/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
