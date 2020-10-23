@@ -1401,6 +1401,11 @@ loop:
 		return blockSet, nil
 	}
 
+	if base.IsChildOf(syncer.Genesis) {
+		// check this case separately to avoid loading genesis block
+		return blockSet, nil
+	}
+
 	knownParent, err := syncer.store.LoadTipSet(known.Parents())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
