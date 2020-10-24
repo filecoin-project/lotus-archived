@@ -46,6 +46,7 @@ func main() {
 		ledgerCmd,
 		sectorsCmd,
 		msgCmd,
+		statCmd,
 	}
 
 	app := &cli.App{
