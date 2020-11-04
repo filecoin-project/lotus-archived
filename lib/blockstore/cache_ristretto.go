@@ -12,18 +12,18 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type CachingBlockstore struct {
+type RistrettoCachingBlockstore struct {
 	cache *ristretto.Cache
 
 	inner blockstore.Blockstore
 }
 
-var _ blockstore.Blockstore = (*CachingBlockstore)(nil)
+var _ blockstore.Blockstore = (*RistrettoCachingBlockstore)(nil)
 
-func WrapCaching(inner blockstore.Blockstore) (*CachingBlockstore, error) {
+func WrapRistrettoCache(inner blockstore.Blockstore) (*RistrettoCachingBlockstore, error) {
 	opts := &ristretto.Config{
-		NumCounters: 10_000_000,
-		MaxCost:     1 << 29,
+		NumCounters: 10_000_000, // assumes we're going to be storing 1MM objects (docs say to x10 that)
+		MaxCost:     1 << 27,    // 256MiB.
 		BufferItems: 64,
 		Metrics:     true,
 	}
@@ -33,7 +33,7 @@ func WrapCaching(inner blockstore.Blockstore) (*CachingBlockstore, error) {
 		return nil, xerrors.Errorf("failed to create ristretto cache: %w", err)
 	}
 
-	c := &CachingBlockstore{
+	c := &RistrettoCachingBlockstore{
 		cache: cache,
 		inner: inner,
 	}
@@ -47,7 +47,7 @@ func WrapCaching(inner blockstore.Blockstore) (*CachingBlockstore, error) {
 	return c, nil
 }
 
-func (c *CachingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
+func (c *RistrettoCachingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	if obj, ok := c.cache.Get([]byte(cid.Hash())); ok {
 		return obj.(blocks.Block), nil
 	}
@@ -59,15 +59,15 @@ func (c *CachingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	return res, err
 }
 
-func (c *CachingBlockstore) GetSize(cid cid.Cid) (int, error) {
+func (c *RistrettoCachingBlockstore) GetSize(cid cid.Cid) (int, error) {
 	return c.inner.GetSize(cid)
 }
 
-func (c *CachingBlockstore) Has(cid cid.Cid) (bool, error) {
+func (c *RistrettoCachingBlockstore) Has(cid cid.Cid) (bool, error) {
 	return c.inner.Has(cid)
 }
 
-func (c *CachingBlockstore) Put(block blocks.Block) error {
+func (c *RistrettoCachingBlockstore) Put(block blocks.Block) error {
 	if _, ok := c.cache.Get([]byte(block.Cid().Hash())); ok {
 		return nil
 	}
@@ -79,7 +79,7 @@ func (c *CachingBlockstore) Put(block blocks.Block) error {
 	return err
 }
 
-func (c *CachingBlockstore) PutMany(blks []blocks.Block) error {
+func (c *RistrettoCachingBlockstore) PutMany(blks []blocks.Block) error {
 	miss := make([]blocks.Block, 0, len(blks))
 	for _, b := range blks {
 		if _, ok := c.cache.Get([]byte(b.Cid().Hash())); ok {
@@ -101,15 +101,15 @@ func (c *CachingBlockstore) PutMany(blks []blocks.Block) error {
 	return err
 }
 
-func (c *CachingBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+func (c *RistrettoCachingBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return c.inner.AllKeysChan(ctx)
 }
 
-func (c *CachingBlockstore) DeleteBlock(cid cid.Cid) error {
+func (c *RistrettoCachingBlockstore) DeleteBlock(cid cid.Cid) error {
 	c.cache.Del(cid)
 	return c.inner.DeleteBlock(cid)
 }
 
-func (c *CachingBlockstore) HashOnRead(enabled bool) {
+func (c *RistrettoCachingBlockstore) HashOnRead(enabled bool) {
 	c.inner.HashOnRead(enabled)
 }
