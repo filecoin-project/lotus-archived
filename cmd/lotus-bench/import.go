@@ -236,8 +236,12 @@ var importBenchCmd = &cli.Command{
 		}
 
 		cacheOpts := blockstore.DefaultCacheOpts()
-		cacheOpts.HasBloomFilterSize = 0
 		bs, err = blockstore.CachedBlockstore(context.TODO(), bs, cacheOpts)
+		if err != nil {
+			return err
+		}
+
+		bs, err = blockstore.WrapCaching(bs)
 		if err != nil {
 			return err
 		}
