@@ -88,7 +88,7 @@ func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo
 		return nil, err
 	}
 
-	return cbs, nil
+	return blockstore.WrapCaching(cbs)
 }
 
 func ChainGCBlockstore(bs dtypes.ChainBlockstore, gcl dtypes.ChainGCLocker) dtypes.ChainGCBlockstore {
