@@ -2,6 +2,9 @@ package blockstore
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/dgraph-io/ristretto"
 	blocks "github.com/ipfs/go-block-format"
@@ -35,6 +38,15 @@ func WrapCaching(inner blockstore.Blockstore) (*CachingBlockstore, error) {
 		cache: cache,
 		inner: inner,
 	}
+
+	go func() {
+		for range time.Tick(2 * time.Second) {
+			m, err := json.Marshal(cache.Metrics)
+			if err == nil {
+				fmt.Println(string(m))
+			}
+		}
+	}()
 
 	return c, nil
 }
