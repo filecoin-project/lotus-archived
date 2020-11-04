@@ -2,7 +2,6 @@ package blockstore
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -24,7 +23,7 @@ var _ blockstore.Blockstore = (*CachingBlockstore)(nil)
 func WrapCaching(inner blockstore.Blockstore) (*CachingBlockstore, error) {
 	opts := &ristretto.Config{
 		NumCounters: 10_000_000,
-		MaxCost:     1 << 28,
+		MaxCost:     1 << 29,
 		BufferItems: 64,
 		Metrics:     true,
 	}
@@ -41,10 +40,7 @@ func WrapCaching(inner blockstore.Blockstore) (*CachingBlockstore, error) {
 
 	go func() {
 		for range time.Tick(2 * time.Second) {
-			m, err := json.Marshal(cache.Metrics)
-			if err == nil {
-				fmt.Println(string(m))
-			}
+			fmt.Println(cache.Metrics.String())
 		}
 	}()
 
