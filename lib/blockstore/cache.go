@@ -52,14 +52,14 @@ func WrapCaching(inner blockstore.Blockstore) (*CachingBlockstore, error) {
 }
 
 func (c *CachingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
-	if obj, ok := c.cache.Get(cid); ok {
+	if obj, ok := c.cache.Get([]byte(cid.Hash())); ok {
 		return obj.(blocks.Block), nil
 	}
 	res, err := c.inner.Get(cid)
 	if err != nil {
 		return res, err
 	}
-	_ = c.cache.Set(cid, res, int64(len(res.RawData())))
+	_ = c.cache.Set([]byte(cid.Hash()), res, int64(len(res.RawData())))
 	return res, err
 }
 
@@ -72,21 +72,21 @@ func (c *CachingBlockstore) Has(cid cid.Cid) (bool, error) {
 }
 
 func (c *CachingBlockstore) Put(block blocks.Block) error {
-	if _, ok := c.cache.Get(block.Cid()); ok {
+	if _, ok := c.cache.Get([]byte(block.Cid().Hash())); ok {
 		return nil
 	}
 	err := c.inner.Put(block)
 	if err != nil {
 		return err
 	}
-	_ = c.cache.Set(block.Cid(), block, int64(len(block.RawData())))
+	_ = c.cache.Set([]byte(block.Cid().Hash()), block, int64(len(block.RawData())))
 	return err
 }
 
 func (c *CachingBlockstore) PutMany(blks []blocks.Block) error {
 	miss := make([]blocks.Block, 0, len(blks))
 	for _, b := range blks {
-		if _, ok := c.cache.Get(b.Cid()); ok {
+		if _, ok := c.cache.Get([]byte(b.Cid().Hash())); ok {
 			continue
 		}
 		miss = append(miss, b)
@@ -100,7 +100,7 @@ func (c *CachingBlockstore) PutMany(blks []blocks.Block) error {
 		return err
 	}
 	for _, b := range miss {
-		_ = c.cache.Set(b.Cid(), b, int64(len(b.RawData())))
+		_ = c.cache.Set([]byte(b.Cid().Hash()), b, int64(len(b.RawData())))
 	}
 	return err
 }
