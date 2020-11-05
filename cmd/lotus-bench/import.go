@@ -261,6 +261,15 @@ var importBenchCmd = &cli.Command{
 		cs := store.NewChainStore(bs, metadataDs, vm.Syscalls(verifier), nil)
 		stm := stmgr.NewStateManager(cs)
 
+		var carFile *os.File
+		// open the CAR file if one is provided.
+		if path := cctx.String("car"); path != "" {
+			var err error
+			if carFile, err = os.Open(path); err != nil {
+				return xerrors.Errorf("failed to open provided CAR file: %w", err)
+			}
+		}
+
 		startTime := time.Now()
 
 		// register a gauge that reports how long since the measurable
@@ -302,18 +311,7 @@ var importBenchCmd = &cli.Command{
 			writeProfile("allocs")
 		}()
 
-		var carFile *os.File
-
-		// open the CAR file if one is provided.
-		if path := cctx.String("car"); path != "" {
-			var err error
-			if carFile, err = os.Open(path); err != nil {
-				return xerrors.Errorf("failed to open provided CAR file: %w", err)
-			}
-		}
-
 		var head *types.TipSet
-
 		// --- IMPORT ---
 		if !cctx.Bool("no-import") {
 			if cctx.Bool("global-profile") {
