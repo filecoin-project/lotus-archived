@@ -16,7 +16,6 @@ import (
 type RistrettoCachingBlockstore struct {
 	blockCache  *ristretto.Cache
 	existsCache *ristretto.Cache
-	sizeCache   *ristretto.Cache
 
 	inner blockstore.Blockstore
 }
@@ -34,16 +33,6 @@ func WrapRistrettoCache(inner blockstore.Blockstore) (*RistrettoCachingBlockstor
 		return nil, xerrors.Errorf("failed to create ristretto block cache: %w", err)
 	}
 
-	sizeCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 10_000_000, // assumes we're going to be storing 1MM objects (docs say to x10 that)
-		MaxCost:     1 << 23,    // 8MiB.
-		BufferItems: 64,
-		Metrics:     true,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("failed to create ristretto size cache: %w", err)
-	}
-
 	hasCache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10_000_000, // assumes we're going to be storing 1MM objects (docs say to x10 that)
 		MaxCost:     1 << 20,    // 1MiB.
@@ -56,7 +45,6 @@ func WrapRistrettoCache(inner blockstore.Blockstore) (*RistrettoCachingBlockstor
 
 	c := &RistrettoCachingBlockstore{
 		blockCache:  blockCache,
-		sizeCache:   sizeCache,
 		existsCache: hasCache,
 		inner:       inner,
 	}
@@ -64,7 +52,6 @@ func WrapRistrettoCache(inner blockstore.Blockstore) (*RistrettoCachingBlockstor
 	go func() {
 		for range time.Tick(2 * time.Second) {
 			fmt.Println("block cache:", blockCache.Metrics.String())
-			fmt.Println("size cache:", sizeCache.Metrics.String())
 			fmt.Println("has cache:", hasCache.Metrics.String())
 		}
 	}()
@@ -78,7 +65,6 @@ func (c *RistrettoCachingBlockstore) Close() error {
 	for _, cache := range []*ristretto.Cache{
 		c.blockCache,
 		c.existsCache,
-		c.sizeCache,
 	} {
 		cache.Clear()
 		cache.Close()
@@ -111,7 +97,6 @@ func (c *RistrettoCachingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	}
 	l := len(res.RawData())
 	_ = c.existsCache.Set(k, true, 1)
-	_ = c.sizeCache.Set(k, l, 8)
 	_ = c.blockCache.Set(k, res, int64(l))
 	return res, err
 }
@@ -123,10 +108,6 @@ func (c *RistrettoCachingBlockstore) GetSize(cid cid.Cid) (int, error) {
 		// we know we don't have the item; short-circuit.
 		return -1, ErrNotFound
 	}
-	// check the size cache.
-	if size, ok := c.sizeCache.Get(k); ok {
-		return size.(int), nil
-	}
 	res, err := c.inner.GetSize(cid)
 	if err != nil {
 		if err == ErrNotFound {
@@ -136,7 +117,6 @@ func (c *RistrettoCachingBlockstore) GetSize(cid cid.Cid) (int, error) {
 		return res, err
 	}
 	_ = c.existsCache.Set(k, true, 1)
-	_ = c.sizeCache.Set(k, res, 8)
 	return res, err
 }
 
@@ -165,7 +145,6 @@ func (c *RistrettoCachingBlockstore) Put(block blocks.Block) error {
 	l := len(block.RawData())
 	_ = c.blockCache.Set(k, block, int64(l))
 	_ = c.existsCache.Set(k, true, 1)
-	_ = c.sizeCache.Set(k, l, 8)
 	return err
 }
 
@@ -192,7 +171,6 @@ func (c *RistrettoCachingBlockstore) PutMany(blks []blocks.Block) error {
 		l := len(b.RawData())
 		_ = c.blockCache.Set(k, b, int64(l))
 		_ = c.existsCache.Set(k, true, 1)
-		_ = c.sizeCache.Set(k, l, 8)
 	}
 	return err
 }
@@ -209,7 +187,6 @@ func (c *RistrettoCachingBlockstore) DeleteBlock(cid cid.Cid) error {
 	}
 	c.blockCache.Del(k)
 	c.existsCache.Set(k, false, 1)
-	c.sizeCache.Del(k)
 	return err
 }
 
