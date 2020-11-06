@@ -20,6 +20,7 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
 	"github.com/ipfs/go-cid"
+	metricsi "github.com/ipfs/go-metrics-interface"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -258,7 +259,7 @@ var importBenchCmd = &cli.Command{
 		}
 
 		metadataDs := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, metadataDs, vm.Syscalls(verifier), nil)
+		cs := store.NewChainStore(bs, bs, metadataDs, vm.Syscalls(verifier), nil)
 		stm := stmgr.NewStateManager(cs)
 
 		var carFile *os.File
