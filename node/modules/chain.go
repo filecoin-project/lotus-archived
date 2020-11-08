@@ -83,7 +83,7 @@ func ChainRawBlockstore(lc fx.Lifecycle, _ helpers.MetricsCtx, r repo.LockedRepo
 	}
 
 	// TODO potentially replace this cached blockstore by a CBOR cache.
-	cbs, err := blockstore.WrapRistrettoCache(bs)
+	cbs, err := blockstore.WrapFreecacheCache(bs)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func ChainRawBlockstore(lc fx.Lifecycle, _ helpers.MetricsCtx, r repo.LockedRepo
 			return nil
 		},
 	})
-	return blockstore.WrapRistrettoCache(cbs)
+	return cbs, err
 }
 
 func ChainGCBlockstore(bs dtypes.ChainRawBlockstore, gcl dtypes.ChainGCLocker) dtypes.ChainGCBlockstore {

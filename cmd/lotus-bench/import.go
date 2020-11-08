@@ -235,7 +235,7 @@ var importBenchCmd = &cli.Command{
 			defer c.Close() //nolint:errcheck
 		}
 
-		bs, err = blockstore.WrapRistrettoCache(bs)
+		bs, err = blockstore.WrapFreecacheCache(bs)
 		if err != nil {
 			return err
 		}
