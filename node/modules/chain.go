@@ -83,7 +83,7 @@ func ChainRawBlockstore(lc fx.Lifecycle, _ helpers.MetricsCtx, r repo.LockedRepo
 	}
 
 	// TODO potentially replace this cached blockstore by a CBOR cache.
-	cbs, err := blockstore.WrapFreecacheCache(bs)
+	cbs, err := blockstore.WrapRistrettoCache(bs)
 	if err != nil {
 		return nil, err
 	}
