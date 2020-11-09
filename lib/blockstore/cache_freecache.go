@@ -34,8 +34,8 @@ var _ blockstore.Blockstore = (*FreecacheCachingBlockstore)(nil)
 
 func WrapFreecacheCache(ctx context.Context, inner blockstore.Blockstore) (*FreecacheCachingBlockstore, error) {
 	c := &FreecacheCachingBlockstore{
-		blockCache:  freecache.NewCache(1 << 29),  // 512MiB.
-		existsCache: freecache.NewCache(1 << 22),  // 4MiB.
+		blockCache:  freecache.NewCache(1 << 30),  // 512MiB.
+		existsCache: freecache.NewCache(1 << 25),  // 32MiB.
 		inner:       inner,
 	}
 
@@ -51,7 +51,7 @@ func WrapFreecacheCache(ctx context.Context, inner blockstore.Blockstore) (*Free
 			return
 		}
 
-		printMetrics := func(ctx context.Context, c *freecache.Cache) {
+		recordMetrics := func(ctx context.Context, c *freecache.Cache) {
 			stats.Record(ctx,
 				CacheMeasures.HitRatio.M(c.HitRate()),
 				CacheMeasures.Hits.M(c.HitCount()),
@@ -65,8 +65,8 @@ func WrapFreecacheCache(ctx context.Context, inner blockstore.Blockstore) (*Free
 		for {
 			select {
 			case <-time.After(CacheMetricsEmitInterval):
-				printMetrics(blockCacheTag, c.blockCache)
-				printMetrics(existsCacheTag, c.existsCache)
+				recordMetrics(blockCacheTag, c.blockCache)
+				recordMetrics(existsCacheTag, c.existsCache)
 			case <-ctx.Done():
 				return // yield
 			}
@@ -204,8 +204,8 @@ func (c *FreecacheCachingBlockstore) DeleteBlock(cid cid.Cid) error {
 }
 
 func (c *FreecacheCachingBlockstore) probabilisticExists(k []byte) bool {
-	if has, err := c.existsCache.Get(k); err == nil && has[0] == HasTrue {
-		return true
+	if has, err := c.existsCache.Get(k); err == nil {
+		return has[0] == HasTrue
 	}
 	// may have paged out of the exists cache, but still present in the block cache.
 	if _, err := c.blockCache.Get(k); err == nil {
