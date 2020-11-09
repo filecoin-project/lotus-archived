@@ -134,7 +134,8 @@ func (c *RistrettoCachingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		return res, err
 	}
 	l := len(res.RawData())
-	_ = c.existsCache.Set(k, true, 1)
+	c.existsCache.Del(k)              // evict the item immediately in case it was added concurrently.
+	_ = c.existsCache.Set(k, true, 1) // set is asynchronous.
 	_ = c.blockCache.Set(k, res, int64(l))
 	return res, err
 }
@@ -182,7 +183,8 @@ func (c *RistrettoCachingBlockstore) Put(block blocks.Block) error {
 	}
 	l := len(block.RawData())
 	_ = c.blockCache.Set(k, block, int64(l))
-	_ = c.existsCache.Set(k, true, 1)
+	c.existsCache.Del(k)              // evict the item immediately in case it exists.
+	_ = c.existsCache.Set(k, true, 1) // set is asynchronous.
 	return err
 }
 
@@ -208,7 +210,8 @@ func (c *RistrettoCachingBlockstore) PutMany(blks []blocks.Block) error {
 		k := []byte(b.Cid().Hash())
 		l := len(b.RawData())
 		_ = c.blockCache.Set(k, b, int64(l))
-		_ = c.existsCache.Set(k, true, 1)
+		c.existsCache.Del(k)              // evict the item immediately in case it exists.
+		_ = c.existsCache.Set(k, true, 1) // set is asynchronous.
 	}
 	return err
 }
@@ -224,21 +227,21 @@ func (c *RistrettoCachingBlockstore) DeleteBlock(cid cid.Cid) error {
 		return err
 	}
 	c.blockCache.Del(k)
-	c.existsCache.Set(k, false, 1)
+	c.existsCache.Del(k)           // evict the item immediately in case it exists.
+	c.existsCache.Set(k, false, 1) // set is asynchronous.
 	return err
 }
 
 func (c *RistrettoCachingBlockstore) probabilisticExists(k []byte) bool {
-	if has, ok := c.existsCache.Get(k); ok && has.(bool) {
-		return true
+	if has, ok := c.existsCache.Get(k); ok {
+		return has.(bool)
 	}
 	// may have paged out of the exists cache, but still present in the block cache.
 	if _, ok := c.blockCache.Get(k); ok {
+		c.existsCache.Del(k)              // play it safe, just in case the value was added interim.
 		_ = c.existsCache.Set(k, true, 1) // update the exists cache.
 		return true
 	}
-	// NOTE: we _could_ check the size cache, but if two caches have already
-	// missed, it's likely that the size cache would miss too.
 	return false
 }
 
