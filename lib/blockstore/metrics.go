@@ -135,6 +135,8 @@ var DefaultViews = []*view.View{
 	CacheViews.HitRatio,
 	CacheViews.Hits,
 	CacheViews.Misses,
+	CacheViews.Entries,
+	CacheViews.QueriesServed,
 	CacheViews.Adds,
 	CacheViews.Updates,
 	CacheViews.Evictions,
@@ -143,5 +145,4 @@ var DefaultViews = []*view.View{
 	CacheViews.SetsDropped,
 	CacheViews.SetsRejected,
 	CacheViews.QueriesDropped,
-	CacheViews.GetsKept,
 }
