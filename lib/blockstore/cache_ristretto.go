@@ -14,10 +14,6 @@ import (
 	"golang.org/x/xerrors"
 )
 
-// MetricsEmitInterval is the interval at which metrics are emitted onto
-// OpenCensus.
-var MetricsEmitInterval = 5 * time.Second
-
 type RistrettoCachingBlockstore struct {
 	blockCache  *ristretto.Cache
 	existsCache *ristretto.Cache
@@ -78,14 +74,14 @@ func WrapRistrettoCache(ctx context.Context, inner blockstore.Blockstore) (*Rist
 				CacheMeasures.CostEvicted.M(int64(m.CostEvicted())),
 				CacheMeasures.SetsDropped.M(int64(m.SetsDropped())),
 				CacheMeasures.SetsRejected.M(int64(m.SetsRejected())),
-				CacheMeasures.GetsDropped.M(int64(m.GetsDropped())),
-				CacheMeasures.GetsKept.M(int64(m.GetsKept())),
+				CacheMeasures.QueriesDropped.M(int64(m.GetsDropped())),
+				CacheMeasures.QueriesServed.M(int64(m.GetsKept())),
 			)
 		}
 
 		for {
 			select {
-			case <-time.After(MetricsEmitInterval):
+			case <-time.After(CacheMetricsEmitInterval):
 				recordMetrics(blockCacheTag, blockCache.Metrics)
 				recordMetrics(existsCacheTag, existsCache.Metrics)
 			case <-ctx.Done():

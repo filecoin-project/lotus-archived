@@ -82,7 +82,7 @@ func ChainRawBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedR
 		return nil, err
 	}
 
-	cbs, err := blockstore.WrapRistrettoCache(helpers.LifecycleCtx(mctx, lc), bs)
+	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs)
 	if err != nil {
 		return nil, err
 	}
