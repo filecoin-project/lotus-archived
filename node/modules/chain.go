@@ -76,14 +76,13 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 	return mp, nil
 }
 
-func ChainRawBlockstore(lc fx.Lifecycle, _ helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ChainRawBlockstore, error) {
+func ChainRawBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ChainRawBlockstore, error) {
 	bs, err := r.Blockstore(repo.BlockstoreChain)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO potentially replace this cached blockstore by a CBOR cache.
-	cbs, err := blockstore.WrapRistrettoCache(bs)
+	cbs, err := blockstore.WrapRistrettoCache(helpers.LifecycleCtx(mctx, lc), bs)
 	if err != nil {
 		return nil, err
 	}

@@ -2,7 +2,6 @@ package blockstore
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"time"
 
@@ -10,8 +9,14 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 )
+
+// MetricsEmitInterval is the interval at which metrics are emitted onto
+// OpenCensus.
+var MetricsEmitInterval = 5 * time.Second
 
 type RistrettoCachingBlockstore struct {
 	blockCache  *ristretto.Cache
@@ -22,7 +27,7 @@ type RistrettoCachingBlockstore struct {
 
 var _ blockstore.Blockstore = (*RistrettoCachingBlockstore)(nil)
 
-func WrapRistrettoCache(inner blockstore.Blockstore) (*RistrettoCachingBlockstore, error) {
+func WrapRistrettoCache(ctx context.Context, inner blockstore.Blockstore) (*RistrettoCachingBlockstore, error) {
 	blockCache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10_000_000, // assumes we're going to be storing 1MM objects (docs say to x10 that)
 		MaxCost:     1 << 27,    // 256MiB.
@@ -33,7 +38,7 @@ func WrapRistrettoCache(inner blockstore.Blockstore) (*RistrettoCachingBlockstor
 		return nil, xerrors.Errorf("failed to create ristretto block cache: %w", err)
 	}
 
-	hasCache, err := ristretto.NewCache(&ristretto.Config{
+	existsCache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10_000_000, // assumes we're going to be storing 1MM objects (docs say to x10 that)
 		MaxCost:     1 << 20,    // 1MiB.
 		BufferItems: 64,
@@ -45,14 +50,47 @@ func WrapRistrettoCache(inner blockstore.Blockstore) (*RistrettoCachingBlockstor
 
 	c := &RistrettoCachingBlockstore{
 		blockCache:  blockCache,
-		existsCache: hasCache,
+		existsCache: existsCache,
 		inner:       inner,
 	}
 
 	go func() {
-		for range time.Tick(2 * time.Second) {
-			fmt.Println("block cache:", blockCache.Metrics.String())
-			fmt.Println("has cache:", hasCache.Metrics.String())
+		blockCacheTag, err := tag.New(ctx, tag.Insert(CacheName, "block_cache"))
+		if err != nil {
+			log.Warnf("blockstore metrics: failed to instantiate block cache tag: %s", err)
+			return
+		}
+		existsCacheTag, err := tag.New(ctx, tag.Insert(CacheName, "exists_cache"))
+		if err != nil {
+			log.Warnf("blockstore metrics: failed to instantiate exists cache tag: %s", err)
+			return
+		}
+		recordMetrics := func(ctx context.Context, m *ristretto.Metrics) {
+			hits, misses := int64(m.Hits()), int64(m.Misses()) // to get a consistent view for the ratio.
+			stats.Record(ctx,
+				CacheMeasures.HitRatio.M(float64(hits)/(float64(hits)+float64(misses))),
+				CacheMeasures.Hits.M(hits),
+				CacheMeasures.Misses.M(misses),
+				CacheMeasures.Adds.M(int64(m.KeysAdded())),
+				CacheMeasures.Updates.M(int64(m.KeysUpdated())),
+				CacheMeasures.Evictions.M(int64(m.KeysEvicted())),
+				CacheMeasures.CostAdded.M(int64(m.CostAdded())),
+				CacheMeasures.CostEvicted.M(int64(m.CostEvicted())),
+				CacheMeasures.SetsDropped.M(int64(m.SetsDropped())),
+				CacheMeasures.SetsRejected.M(int64(m.SetsRejected())),
+				CacheMeasures.GetsDropped.M(int64(m.GetsDropped())),
+				CacheMeasures.GetsKept.M(int64(m.GetsKept())),
+			)
+		}
+
+		for {
+			select {
+			case <-time.After(MetricsEmitInterval):
+				recordMetrics(blockCacheTag, blockCache.Metrics)
+				recordMetrics(existsCacheTag, existsCache.Metrics)
+			case <-ctx.Done():
+				return // yield
+			}
 		}
 	}()
 

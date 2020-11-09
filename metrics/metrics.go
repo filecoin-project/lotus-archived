@@ -9,6 +9,8 @@ import (
 	"go.opencensus.io/tag"
 
 	rpcmetrics "github.com/filecoin-project/go-jsonrpc/metrics"
+
+	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 // Distribution
@@ -149,30 +151,34 @@ var (
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
-var DefaultViews = append([]*view.View{
-	InfoView,
-	ChainNodeHeightView,
-	ChainNodeHeightExpectedView,
-	ChainNodeWorkerHeightView,
-	BlockReceivedView,
-	BlockValidationFailureView,
-	BlockValidationSuccessView,
-	BlockValidationDurationView,
-	MessagePublishedView,
-	MessageReceivedView,
-	MessageValidationFailureView,
-	MessageValidationSuccessView,
-	PeerCountView,
-	PubsubPublishMessageView,
-	PubsubDeliverMessageView,
-	PubsubRejectMessageView,
-	PubsubDuplicateMessageView,
-	PubsubRecvRPCView,
-	PubsubSendRPCView,
-	PubsubDropRPCView,
-	APIRequestDurationView,
-},
-	rpcmetrics.DefaultViews...)
+var DefaultViews = func() []*view.View {
+	views := []*view.View{
+		InfoView,
+		ChainNodeHeightView,
+		ChainNodeHeightExpectedView,
+		ChainNodeWorkerHeightView,
+		BlockReceivedView,
+		BlockValidationFailureView,
+		BlockValidationSuccessView,
+		BlockValidationDurationView,
+		MessagePublishedView,
+		MessageReceivedView,
+		MessageValidationFailureView,
+		MessageValidationSuccessView,
+		PeerCountView,
+		PubsubPublishMessageView,
+		PubsubDeliverMessageView,
+		PubsubRejectMessageView,
+		PubsubDuplicateMessageView,
+		PubsubRecvRPCView,
+		PubsubSendRPCView,
+		PubsubDropRPCView,
+		APIRequestDurationView,
+	}
+	views = append(views, blockstore.DefaultViews...)
+	views = append(views, rpcmetrics.DefaultViews...)
+	return views
+}()
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.
 func SinceInMilliseconds(startTime time.Time) float64 {
