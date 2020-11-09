@@ -26,7 +26,7 @@ var _ blockstore.Blockstore = (*RistrettoCachingBlockstore)(nil)
 func WrapRistrettoCache(ctx context.Context, inner blockstore.Blockstore) (*RistrettoCachingBlockstore, error) {
 	blockCache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10_000_000, // assumes we're going to be storing 1MM objects (docs say to x10 that)
-		MaxCost:     1 << 27,    // 256MiB.
+		MaxCost:     1 << 29,    // 512MiB.
 		BufferItems: 64,
 		Metrics:     true,
 	})
@@ -36,7 +36,7 @@ func WrapRistrettoCache(ctx context.Context, inner blockstore.Blockstore) (*Rist
 
 	existsCache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10_000_000, // assumes we're going to be storing 1MM objects (docs say to x10 that)
-		MaxCost:     1 << 20,    // 1MiB.
+		MaxCost:     1 << 22,    // 4MiB.
 		BufferItems: 64,
 		Metrics:     true,
 	})

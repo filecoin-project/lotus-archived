@@ -34,8 +34,8 @@ var _ blockstore.Blockstore = (*FreecacheCachingBlockstore)(nil)
 
 func WrapFreecacheCache(ctx context.Context, inner blockstore.Blockstore) (*FreecacheCachingBlockstore, error) {
 	c := &FreecacheCachingBlockstore{
-		blockCache:  freecache.NewCache(1 << 27),
-		existsCache: freecache.NewCache(1 << 20),
+		blockCache:  freecache.NewCache(1 << 29),  // 512MiB.
+		existsCache: freecache.NewCache(1 << 22),  // 4MiB.
 		inner:       inner,
 	}
 
