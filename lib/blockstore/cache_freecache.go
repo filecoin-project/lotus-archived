@@ -7,7 +7,6 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 
@@ -27,16 +26,20 @@ type FreecacheCachingBlockstore struct {
 	blockCache  *freecache.Cache
 	existsCache *freecache.Cache
 
-	inner blockstore.Blockstore
+	inner  Blockstore
+	viewer Viewer // non-nill if inner implements Viewer.
 }
 
-var _ blockstore.Blockstore = (*FreecacheCachingBlockstore)(nil)
+var _ Blockstore = (*FreecacheCachingBlockstore)(nil)
+var _ Viewer = (*FreecacheCachingBlockstore)(nil)
 
-func WrapFreecacheCache(ctx context.Context, inner blockstore.Blockstore) (*FreecacheCachingBlockstore, error) {
+func WrapFreecacheCache(ctx context.Context, inner Blockstore) (*FreecacheCachingBlockstore, error) {
+	v, _ := inner.(Viewer)
 	c := &FreecacheCachingBlockstore{
 		blockCache:  freecache.NewCache(1 << 28), // 512MiB.
 		existsCache: freecache.NewCache(1 << 26), // 64MiB.
 		inner:       inner,
+		viewer:      v,
 	}
 
 	go func() {
@@ -87,17 +90,48 @@ func (c *FreecacheCachingBlockstore) Close() error {
 	return nil
 }
 
+func (c *FreecacheCachingBlockstore) View(cid cid.Cid, callback func([]byte) error) error {
+	if c.viewer == nil {
+		// short-circuit if the blockstore is not viewable.
+		blk, err := c.Get(cid)
+		if err != nil {
+			return err
+		}
+		return callback(blk.RawData())
+	}
+
+	k := []byte(cid.Hash())
+
+	// try the cache.
+	if val, have, conclusive := c.tryCache(k); conclusive && have {
+		return callback(val)
+	} else if conclusive && !have {
+		return ErrNotFound
+	}
+
+	// fall back to the inner store.
+	err := c.viewer.View(cid, func(b []byte) error {
+		_ = c.existsCache.Set(k, HasTrueVal, 0)
+		_ = c.blockCache.Set(k, b, 0)
+		return callback(b)
+	})
+	if err == ErrNotFound {
+		// inform the has cache that the item does not exist.
+		_ = c.existsCache.Set(k, HasFalseVal, 0)
+	}
+	return err
+}
+
 func (c *FreecacheCachingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	k := []byte(cid.Hash())
-	// check the has cache.
-	if has, err := c.existsCache.Get(k); err == nil && has[0] == HasFalse {
-		// we know we don't have the item; short-circuit.
+
+	// try the cache.
+	if val, have, conclusive := c.tryCache(k); conclusive && have {
+		return blocks.NewBlockWithCid(val, cid)
+	} else if conclusive && !have {
 		return nil, ErrNotFound
 	}
-	// check the block cache.
-	if data, err := c.blockCache.Get(k); err == nil {
-		return blocks.NewBlockWithCid(data, cid)
-	}
+
 	// fall back to the inner store.
 	res, err := c.inner.Get(cid)
 	if err != nil {
@@ -203,6 +237,10 @@ func (c *FreecacheCachingBlockstore) DeleteBlock(cid cid.Cid) error {
 	return err
 }
 
+func (c *FreecacheCachingBlockstore) HashOnRead(enabled bool) {
+	c.inner.HashOnRead(enabled)
+}
+
 func (c *FreecacheCachingBlockstore) probabilisticExists(k []byte) bool {
 	if has, err := c.existsCache.Get(k); err == nil {
 		return has[0] == HasTrue
@@ -217,6 +255,18 @@ func (c *FreecacheCachingBlockstore) probabilisticExists(k []byte) bool {
 	return false
 }
 
-func (c *FreecacheCachingBlockstore) HashOnRead(enabled bool) {
-	c.inner.HashOnRead(enabled)
+// tryCache returns the cached element if we have it. The first boolean
+// indicates if we know for sure if the element exists; the second boolean is
+// true if the answer is conclusive. If false, the underlying store must be hit.
+func (c *FreecacheCachingBlockstore) tryCache(k []byte) (v []byte, have bool, conclusive bool) {
+	// check the has cache.
+	if has, err := c.existsCache.Get(k); err == nil && has[0] == HasFalse {
+		// we know we don't have the item; short-circuit.
+		return nil, false, true
+	}
+	// check the block cache.
+	if data, err := c.blockCache.Get(k); err == nil {
+		return data, true, true
+	}
+	return nil, false, false
 }

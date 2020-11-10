@@ -8,7 +8,6 @@ import (
 	"github.com/dgraph-io/ristretto"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
@@ -18,12 +17,14 @@ type RistrettoCachingBlockstore struct {
 	blockCache  *ristretto.Cache
 	existsCache *ristretto.Cache
 
-	inner blockstore.Blockstore
+	inner  Blockstore
+	viewer Viewer // non-nill if inner implements Viewer.
 }
 
-var _ blockstore.Blockstore = (*RistrettoCachingBlockstore)(nil)
+var _ Blockstore = (*RistrettoCachingBlockstore)(nil)
 
-func WrapRistrettoCache(ctx context.Context, inner blockstore.Blockstore) (*RistrettoCachingBlockstore, error) {
+func WrapRistrettoCache(ctx context.Context, inner Blockstore) (*RistrettoCachingBlockstore, error) {
+	v, _ := inner.(Viewer)
 	blockCache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10_000_000, // assumes we're going to be storing 1MM objects (docs say to x10 that)
 		MaxCost:     1 << 29,    // 512MiB.
@@ -48,6 +49,7 @@ func WrapRistrettoCache(ctx context.Context, inner blockstore.Blockstore) (*Rist
 		blockCache:  blockCache,
 		existsCache: existsCache,
 		inner:       inner,
+		viewer:      v,
 	}
 
 	go func() {
@@ -109,30 +111,64 @@ func (c *RistrettoCachingBlockstore) Close() error {
 	return nil
 }
 
+func (c *RistrettoCachingBlockstore) View(cid cid.Cid, callback func([]byte) error) error {
+	if c.viewer == nil {
+		// short-circuit if the blockstore is not viewable.
+		blk, err := c.Get(cid)
+		if err != nil {
+			return err
+		}
+		return callback(blk.RawData())
+	}
+
+	k := []byte(cid.Hash())
+
+	// try the cache.
+	if val, have, conclusive := c.tryCache(k); conclusive && have {
+		return callback(val.RawData())
+	} else if conclusive && !have {
+		return ErrNotFound
+	}
+
+	// fall back to the inner store.
+	err := c.viewer.View(cid, func(b []byte) error {
+		c.existsCache.Del(k)          // evict the item immediately in case it was added concurrently.
+		c.existsCache.Set(k, true, 1) // set is asynchronous.
+		if blk, err := blocks.NewBlockWithCid(b, cid); err == nil {
+			c.blockCache.Set(k, blk, int64(len(b)))
+		}
+		return callback(b)
+	})
+	if err == ErrNotFound {
+		// inform the has cache that the item does not exist.
+		c.existsCache.Set(k, false, 1)
+	}
+	return err
+}
+
 func (c *RistrettoCachingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	k := []byte(cid.Hash())
-	// check the has cache.
-	if has, ok := c.existsCache.Get(k); ok && !has.(bool) {
-		// we know we don't have the item; short-circuit.
+
+	// try the cache.
+	if blk, have, conclusive := c.tryCache(k); conclusive && have {
+		return blk, nil
+	} else if conclusive && !have {
 		return nil, ErrNotFound
 	}
-	// check the block cache.
-	if obj, ok := c.blockCache.Get(k); ok {
-		return obj.(blocks.Block), nil
-	}
+
 	// fall back to the inner store.
 	res, err := c.inner.Get(cid)
 	if err != nil {
 		if err == ErrNotFound {
 			// inform the has cache that the item does not exist.
-			_ = c.existsCache.Set(k, false, 1)
+			c.existsCache.Set(k, false, 1)
 		}
 		return res, err
 	}
 	l := len(res.RawData())
-	c.existsCache.Del(k)              // evict the item immediately in case it was added concurrently.
-	_ = c.existsCache.Set(k, true, 1) // set is asynchronous.
-	_ = c.blockCache.Set(k, res, int64(l))
+	c.existsCache.Del(k)          // evict the item immediately in case it was added concurrently.
+	c.existsCache.Set(k, true, 1) // set is asynchronous.
+	c.blockCache.Set(k, res, int64(l))
 	return res, err
 }
 
@@ -147,11 +183,11 @@ func (c *RistrettoCachingBlockstore) GetSize(cid cid.Cid) (int, error) {
 	if err != nil {
 		if err == ErrNotFound {
 			// inform the exists cache that the item does not exist.
-			_ = c.existsCache.Set(k, false, 1)
+			c.existsCache.Set(k, false, 1)
 		}
 		return res, err
 	}
-	_ = c.existsCache.Set(k, true, 1)
+	c.existsCache.Set(k, true, 1)
 	return res, err
 }
 
@@ -164,7 +200,7 @@ func (c *RistrettoCachingBlockstore) Has(cid cid.Cid) (bool, error) {
 	if err != nil {
 		return has, err
 	}
-	_ = c.existsCache.Set(k, has, 1)
+	c.existsCache.Set(k, has, 1)
 	return has, err
 }
 
@@ -178,9 +214,9 @@ func (c *RistrettoCachingBlockstore) Put(block blocks.Block) error {
 		return err
 	}
 	l := len(block.RawData())
-	_ = c.blockCache.Set(k, block, int64(l))
-	c.existsCache.Del(k)              // evict the item immediately in case it exists.
-	_ = c.existsCache.Set(k, true, 1) // set is asynchronous.
+	c.existsCache.Del(k)          // evict the item immediately in case it exists.
+	c.existsCache.Set(k, true, 1) // set is asynchronous.
+	c.blockCache.Set(k, block, int64(l))
 	return err
 }
 
@@ -205,9 +241,9 @@ func (c *RistrettoCachingBlockstore) PutMany(blks []blocks.Block) error {
 	for _, b := range miss {
 		k := []byte(b.Cid().Hash())
 		l := len(b.RawData())
-		_ = c.blockCache.Set(k, b, int64(l))
-		c.existsCache.Del(k)              // evict the item immediately in case it exists.
-		_ = c.existsCache.Set(k, true, 1) // set is asynchronous.
+		c.blockCache.Set(k, b, int64(l))
+		c.existsCache.Del(k)          // evict the item immediately in case it exists.
+		c.existsCache.Set(k, true, 1) // set is asynchronous.
 	}
 	return err
 }
@@ -234,8 +270,8 @@ func (c *RistrettoCachingBlockstore) probabilisticExists(k []byte) bool {
 	}
 	// may have paged out of the exists cache, but still present in the block cache.
 	if _, ok := c.blockCache.Get(k); ok {
-		c.existsCache.Del(k)              // play it safe, just in case the value was added interim.
-		_ = c.existsCache.Set(k, true, 1) // update the exists cache.
+		c.existsCache.Del(k)          // play it safe, just in case the value was added interim.
+		c.existsCache.Set(k, true, 1) // update the exists cache.
 		return true
 	}
 	return false
@@ -243,4 +279,20 @@ func (c *RistrettoCachingBlockstore) probabilisticExists(k []byte) bool {
 
 func (c *RistrettoCachingBlockstore) HashOnRead(enabled bool) {
 	c.inner.HashOnRead(enabled)
+}
+
+// tryCache returns the cached element if we have it. The first boolean
+// indicates if we know for sure if the element exists; the second boolean is
+// true if the answer is conclusive. If false, the underlying store must be hit.
+func (c *RistrettoCachingBlockstore) tryCache(k []byte) (block blocks.Block, have bool, conclusive bool) {
+	// check the has cache.
+	if has, ok := c.existsCache.Get(k); ok && !has.(bool) {
+		// we know we don't have the item; short-circuit.
+		return nil, false, true
+	}
+	// check the block cache.
+	if obj, ok := c.blockCache.Get(k); ok {
+		return obj.(blocks.Block), true, true
+	}
+	return nil, false, false
 }
