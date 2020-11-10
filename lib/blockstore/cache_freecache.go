@@ -112,6 +112,8 @@ func (c *FreecacheCachingBlockstore) View(cid cid.Cid, callback func([]byte) err
 	// fall back to the inner store.
 	err := c.viewer.View(cid, func(b []byte) error {
 		_ = c.existsCache.Set(k, HasTrueVal, 0)
+		// set copies the bytes into the cache (it does not retain the byte
+		// slice), so this is safe.
 		_ = c.blockCache.Set(k, b, 0)
 		return callback(b)
 	})

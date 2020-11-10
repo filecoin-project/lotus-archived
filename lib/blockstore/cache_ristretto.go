@@ -8,6 +8,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	pool "github.com/libp2p/go-buffer-pool"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
@@ -30,6 +31,9 @@ func WrapRistrettoCache(ctx context.Context, inner Blockstore) (*RistrettoCachin
 		MaxCost:     1 << 29,    // 512MiB.
 		BufferItems: 64,
 		Metrics:     true,
+		OnEvict: func(_, _ uint64, value interface{}, _ int64) {
+			pool.Put(value.(*blocks.BasicBlock).RawData()) // return slice to the pool.
+		},
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create ristretto block cache: %w", err)
@@ -134,8 +138,14 @@ func (c *RistrettoCachingBlockstore) View(cid cid.Cid, callback func([]byte) err
 	err := c.viewer.View(cid, func(b []byte) error {
 		c.existsCache.Del(k)          // evict the item immediately in case it was added concurrently.
 		c.existsCache.Set(k, true, 1) // set is asynchronous.
-		if blk, err := blocks.NewBlockWithCid(b, cid); err == nil {
+
+		// we cannot retain the viewed value, as it's probably mmapped, make a copy.
+		cpy := pool.Get(len(b)) // get a pooled byte buffer.
+		copy(cpy, b)
+		if blk, err := blocks.NewBlockWithCid(cpy, cid); err == nil {
 			c.blockCache.Set(k, blk, int64(len(b)))
+		} else {
+			pool.Put(cpy)
 		}
 		return callback(b)
 	})
