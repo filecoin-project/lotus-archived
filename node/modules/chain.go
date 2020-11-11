@@ -17,9 +17,6 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/journal"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -30,6 +27,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
 	"github.com/filecoin-project/lotus/lib/timedbs"
@@ -38,7 +37,10 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ChainGCBlockstore) dtypes.ChainBitswap {
+// ChainBitswap uses a blockstore that bypasses all caches.
+func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.BareLocalChainBlockstore) dtypes.ChainBitswap {
+	gcbs := blockstore.NewGCBlockstore(bs, blockstore.NewGCLocker())
+
 	// prefix protocol for chain bitswap
 	// (so bitswap uses /chain/ipfs/bitswap/1.0.0 internally for chain sync stuff)
 	bitswapNetwork := network.NewFromIpfsHost(host, rt, network.Prefix("/chain"))
@@ -49,7 +51,7 @@ func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt r
 	cache := timedbs.NewTimedCacheBS(2 * time.Duration(build.BlockDelaySecs) * time.Second)
 	lc.Append(fx.Hook{OnStop: cache.Stop, OnStart: cache.Start})
 
-	bitswapBs := bufbstore.NewTieredBstore(bs, cache)
+	bitswapBs := bufbstore.NewTieredBstore(gcbs, cache)
 
 	// Use just exch.Close(), closing the context is not needed
 	exch := bitswap.New(mctx, bitswapNetwork, bitswapBs, bitswapOptions...)
@@ -76,36 +78,32 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 	return mp, nil
 }
 
-func ChainRawBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ChainRawBlockstore, error) {
+func ChainRawBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.CachedLocalChainBlockstore, dtypes.BareLocalChainBlockstore, error) {
 	bs, err := r.Blockstore(repo.BlockstoreChain)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// TODO potentially replace this cached blockstore by a CBOR cache.
 	cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return cbs, nil
+	return cbs, bs, nil
 }
 
-func ChainGCBlockstore(bs dtypes.ChainRawBlockstore, gcl dtypes.ChainGCLocker) dtypes.ChainGCBlockstore {
-	return blockstore.NewGCBlockstore(bs, gcl)
-}
-
-func ChainBlockService(bs dtypes.ChainRawBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
+func ChainBlockService(bs dtypes.CachedLocalChainBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
 	return blockservice.New(bs, rem)
 }
 
-func FallbackChainBlockstore(rbs dtypes.ChainRawBlockstore) dtypes.ChainBlockstore {
+func FallbackChainBlockstore(rbs dtypes.CachedLocalChainBlockstore) dtypes.CachedChainBlockstore {
 	return &blockstore.FallbackStore{
 		Blockstore: rbs,
 	}
 }
 
-func SetupFallbackBlockstore(cbs dtypes.ChainBlockstore, rem dtypes.ChainBitswap) error {
+func SetupFallbackBlockstore(cbs dtypes.CachedChainBlockstore, rem dtypes.ChainBitswap) error {
 	fbs, ok := cbs.(*blockstore.FallbackStore)
 	if !ok {
 		return xerrors.Errorf("expected a FallbackStore")
@@ -115,7 +113,7 @@ func SetupFallbackBlockstore(cbs dtypes.ChainBlockstore, rem dtypes.ChainBitswap
 	return nil
 }
 
-func ChainStore(bs dtypes.ChainBlockstore, lbs dtypes.ChainRawBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
+func ChainStore(bs dtypes.CachedChainBlockstore, lbs dtypes.CachedLocalChainBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
 	chain := store.NewChainStore(bs, lbs, ds, syscalls, j)
 
 	if err := chain.Load(); err != nil {
@@ -131,8 +129,8 @@ func ErrorGenesis() Genesis {
 	}
 }
 
-func LoadGenesis(genBytes []byte) func(dtypes.ChainBlockstore) Genesis {
-	return func(bs dtypes.ChainBlockstore) Genesis {
+func LoadGenesis(genBytes []byte) func(dtypes.CachedChainBlockstore) Genesis {
+	return func(bs dtypes.CachedChainBlockstore) Genesis {
 		return func() (header *types.BlockHeader, e error) {
 			c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
 			if err != nil {

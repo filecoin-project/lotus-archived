@@ -55,7 +55,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -264,8 +263,6 @@ func Online() Option {
 			Override(new(api.WalletAPI), From(new(wallet.MultiWallet))),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
-			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
-			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),
 			Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
 			Override(new(dtypes.ChainBlockService), modules.ChainBlockService),
 
@@ -524,11 +521,11 @@ func Repo(r repo.Repo) Option {
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 
 			Override(new(dtypes.MetadataDS), modules.Datastore),
-			Override(new(dtypes.ChainRawBlockstore), modules.ChainRawBlockstore),
-			Override(new(dtypes.ChainBlockstore), From(new(dtypes.ChainRawBlockstore))),
+			Override(new(dtypes.CachedLocalChainBlockstore), modules.ChainRawBlockstore),
+			Override(new(dtypes.CachedChainBlockstore), From(new(dtypes.CachedLocalChainBlockstore))),
 
 			If(os.Getenv("LOTUS_ENABLE_CHAINSTORE_FALLBACK") == "1",
-				Override(new(dtypes.ChainBlockstore), modules.FallbackChainBlockstore),
+				Override(new(dtypes.CachedChainBlockstore), modules.FallbackChainBlockstore),
 				Override(SetupFallbackBlockstoreKey, modules.SetupFallbackBlockstore),
 			),
 
