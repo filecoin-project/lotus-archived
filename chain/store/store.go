@@ -1128,7 +1128,7 @@ func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {
 }
 
 func (cs *ChainStore) ActorStore(ctx context.Context) adt.Store {
-	return ActorStore(ctx, cs.chainBlockstore)
+	return ActorStore(ctx, cs.stateBlockstore)
 }
 
 func (cs *ChainStore) VMSys() vm.SyscallBuilder {
