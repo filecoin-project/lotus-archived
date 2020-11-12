@@ -521,12 +521,14 @@ func Repo(r repo.Repo) Option {
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 
 			Override(new(dtypes.MetadataDS), modules.Datastore),
-			Override(new(dtypes.CachedLocalChainBlockstore), modules.ChainRawBlockstore),
-			Override(new(dtypes.CachedChainBlockstore), From(new(dtypes.CachedLocalChainBlockstore))),
+			Override(new(dtypes.BareLocalChainBlockstore), modules.BareLocalChainBlockstore),
+			Override(new(dtypes.CachedLocalChainBlockstore), modules.CachedLocalChainBlockstore),
+			Override(new(dtypes.ConsensusChainBlockstore), From(new(dtypes.CachedLocalChainBlockstore))),
+			Override(new(dtypes.ExchangeChainBlockstore), From(new(dtypes.BareLocalChainBlockstore))),
 
 			If(os.Getenv("LOTUS_ENABLE_CHAINSTORE_FALLBACK") == "1",
-				Override(new(dtypes.CachedChainBlockstore), modules.FallbackChainBlockstore),
 				Override(SetupFallbackBlockstoreKey, modules.SetupFallbackBlockstore),
+				Override(new(dtypes.ConsensusChainBlockstore), modules.FallbackChainBlockstore),
 			),
 
 			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),

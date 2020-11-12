@@ -716,7 +716,7 @@ func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) error {
 			end = len(b)
 		}
 
-		err = multierr.Append(err, cs.bs.PutMany(sbs[start:end]))
+		err = multierr.Append(err, cs.localbs.PutMany(sbs[start:end]))
 	}
 
 	return err

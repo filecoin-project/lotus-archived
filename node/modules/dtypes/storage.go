@@ -23,19 +23,27 @@ import (
 // dy default it's namespaced under /metadata in main repo datastore
 type MetadataDS datastore.Batching
 
-// BareLocalChainBlockstore is a blockstore that is guaranteed to not be
+// BareLocalChainBlockstore is a blockstore that is **guaranteed** to not be
 // fronted by a cache. It should be used for processes like Bitswap, to avoid
-// untrusted cache thrashing.
+// cache thrashing by untrusted parties.
 type BareLocalChainBlockstore blockstore.Blockstore
 
-// CachedLocalChainBlockstore is a blockstore that is fronted by a cache,
+// CachedLocalChainBlockstore is a blockstore that may be fronted by a cache,
 // useful during local operations (such as chain validation) that benefit from
 // temporal locality and recency caching.
 type CachedLocalChainBlockstore blockstore.Blockstore
 
-// CachedChainBlockstore is like CachedLocalChainBlockstore, but may be Bitswap
-// backed if that setting is enabled.
-type CachedChainBlockstore blockstore.Blockstore
+// ConsensusChainBlockstore is the effective chain blockstore to be used for
+// chain consensus. It may be Bitswap backed if that setting is enabled.
+type ConsensusChainBlockstore blockstore.Blockstore
+
+// ExchangeChainBlockstore is the blockstore to be used when exchanging blobs
+// over the network, such as when using Bitswap, Graphsync, and possibly
+// ChainExchange.
+//
+// Usually, this store bypasses caches to avoid cache thrashing by untrusted
+// parties.
+type ExchangeChainBlockstore blockstore.Blockstore
 
 type ChainBitswap exchange.Interface
 type ChainBlockService bserv.BlockService
