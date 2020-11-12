@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-metrics-interface"
 	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -39,7 +40,7 @@ import (
 )
 
 // ChainBitswap uses a blockstore that bypasses all caches.
-func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ExchangeChainBlockstore) dtypes.ChainBitswap {
+func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ExchangeBlockstore) dtypes.ChainBitswap {
 	gcbs := blockstore.NewGCBlockstore(bs, blockstore.NewGCLocker())
 
 	// prefix protocol for chain bitswap
@@ -79,10 +80,11 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 	return mp, nil
 }
 
-// BareLocalChainBlockstore returns a bare local chain store with direct
-// access (no caching).
-func BareLocalChainBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.BareLocalChainBlockstore, error) {
-	bs, err := r.Blockstore(repo.BlockstoreChain)
+// BareMonolithBlockstore returns a bare local blockstore for chain and state
+// data, with direct access. In the future, both data domains may be segregated
+// into individual blockstores.
+func BareMonolithBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.BareMonolithBlockstore, error) {
+	bs, err := r.Blockstore(repo.BlockstoreMonolith)
 	if err != nil {
 		return nil, err
 	}
@@ -96,10 +98,9 @@ func BareLocalChainBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.BareLo
 	return bs, err
 }
 
-// CachedLocalChainBlockstore takes a bare local chain blockstore and wraps it
-// in the configured cache.
-func CachedLocalChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareLocalChainBlockstore) (dtypes.CachedLocalChainBlockstore, error) {
+func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMonolithBlockstore) (dtypes.StateBlockstore, error) {
 	// TODO potentially replace this cached blockstore by a CBOR cache.
+	mctx = metrics.CtxScope(mctx, "state_cache")
 	cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
 	if err != nil {
 		return nil, err
@@ -108,26 +109,40 @@ func CachedLocalChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dty
 	// blockstores should be lenient or idempotent on double-close. The native
 	// badger blockstore is (and unit tested).
 	if c, ok := bs.(io.Closer); ok {
-		lc.Append(fx.Hook{
-			OnStop: func(_ context.Context) error {
-				return c.Close()
-			},
-		})
+		lc.Append(closerStopHook(c))
 	}
 	return cbs, nil
 }
 
-func ChainBlockService(bs dtypes.ExchangeChainBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
+// ChainBlockstore takes a bare local blockstore and wraps it in the
+// configured cache.
+func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMonolithBlockstore) (dtypes.ChainBlockstore, error) {
+	// TODO potentially replace this cached blockstore by a CBOR cache.
+	mctx = metrics.CtxScope(mctx, "chain_cache")
+	cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
+	if err != nil {
+		return nil, err
+	}
+	// this may end up double closing the underlying blockstore, but all
+	// blockstores should be lenient or idempotent on double-close. The native
+	// badger blockstore is (and unit tested).
+	if c, ok := bs.(io.Closer); ok {
+		lc.Append(closerStopHook(c))
+	}
+	return cbs, nil
+}
+
+func ChainBlockService(bs dtypes.ExchangeBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
 	return blockservice.New(bs, rem)
 }
 
-func FallbackChainBlockstore(rbs dtypes.CachedLocalChainBlockstore) dtypes.ConsensusChainBlockstore {
+func FallbackMonolithBlockstore(rbs dtypes.ChainBlockstore) dtypes.StateBlockstore {
 	return &blockstore.FallbackStore{
 		Blockstore: rbs,
 	}
 }
 
-func SetupFallbackBlockstore(cbs dtypes.ConsensusChainBlockstore, rem dtypes.ChainBitswap) error {
+func InitFallbackBlockstore(cbs dtypes.BareMonolithBlockstore, rem dtypes.ChainBitswap) error {
 	fbs, ok := cbs.(*blockstore.FallbackStore)
 	if !ok {
 		return xerrors.Errorf("expected a FallbackStore")
@@ -143,7 +158,7 @@ func SetupFallbackBlockstore(cbs dtypes.ConsensusChainBlockstore, rem dtypes.Cha
 //       that don't exist locally, and
 //   (2) a store that's guaranteed to be local only, for strict local-only
 //       operations.
-func ChainStore(bs dtypes.ConsensusChainBlockstore, localbs dtypes.CachedLocalChainBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
+func ChainStore(bs dtypes.StateBlockstore, localbs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
 	chain := store.NewChainStore(bs, localbs, ds, syscalls, j)
 
 	if err := chain.Load(); err != nil {
@@ -159,8 +174,8 @@ func ErrorGenesis() Genesis {
 	}
 }
 
-func LoadGenesis(genBytes []byte) func(dtypes.ConsensusChainBlockstore) Genesis {
-	return func(bs dtypes.ConsensusChainBlockstore) Genesis {
+func LoadGenesis(genBytes []byte) func(dtypes.StateBlockstore) Genesis {
+	return func(bs dtypes.StateBlockstore) Genesis {
 		return func() (header *types.BlockHeader, e error) {
 			c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
 			if err != nil {
@@ -272,4 +287,12 @@ func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
 
 func NewSlashFilter(ds dtypes.MetadataDS) *slashfilter.SlashFilter {
 	return slashfilter.New(ds)
+}
+
+func closerStopHook(c io.Closer) fx.Hook {
+	return fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return c.Close()
+		},
+	}
 }

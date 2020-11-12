@@ -39,7 +39,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 			return types.NewInt(0), xerrors.Errorf("get power actor: %w", err)
 		}
 
-		powState, err := power.Load(cs.Store(ctx), act)
+		powState, err := power.Load(cs.StateStore(ctx), act)
 		if err != nil {
 			return types.NewInt(0), xerrors.Errorf("failed to load power actor state: %w", err)
 		}

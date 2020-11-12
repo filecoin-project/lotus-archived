@@ -651,7 +651,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 		return xerrors.Errorf("failed to load power actor: %w", err)
 	}
 
-	powState, err := power.Load(syncer.store.Store(ctx), act)
+	powState, err := power.Load(syncer.store.StateStore(ctx), act)
 	if err != nil {
 		return xerrors.Errorf("failed to load power actor state: %w", err)
 	}
@@ -1060,7 +1060,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return err
 	}
 
-	st, err := state.LoadStateTree(syncer.store.Store(ctx), stateroot)
+	st, err := state.LoadStateTree(syncer.store.StateStore(ctx), stateroot)
 	if err != nil {
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}

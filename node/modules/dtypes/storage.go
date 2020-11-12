@@ -23,27 +23,26 @@ import (
 // dy default it's namespaced under /metadata in main repo datastore
 type MetadataDS datastore.Batching
 
-// BareLocalChainBlockstore is a blockstore that is **guaranteed** to not be
-// fronted by a cache. It should be used for processes like Bitswap, to avoid
-// cache thrashing by untrusted parties.
-type BareLocalChainBlockstore blockstore.Blockstore
+// BareMonolithBlockstore is the current monolithic blockstore as opened from
+// the filesystem, with no caching on top. It may be overriden by a
+// Bitswap-fallback if that setting is enabled.
+type BareMonolithBlockstore blockstore.Blockstore
 
-// CachedLocalChainBlockstore is a blockstore that may be fronted by a cache,
-// useful during local operations (such as chain validation) that benefit from
-// temporal locality and recency caching.
-type CachedLocalChainBlockstore blockstore.Blockstore
+// ChainBlockstore is a blockstore to store chain data. It is currently a
+// synonym of the BareMonolithBlockstore, but it is fronted by a dedicated
+// chain data cache.
+type ChainBlockstore blockstore.Blockstore
 
-// ConsensusChainBlockstore is the effective chain blockstore to be used for
-// chain consensus. It may be Bitswap backed if that setting is enabled.
-type ConsensusChainBlockstore blockstore.Blockstore
+// StateBlockstore is a blockstore to store state data. It is currently a
+// synonym of the BareMonolithiBlockstore, but it is frontend by a dedicated
+// state data cache.
+type StateBlockstore blockstore.Blockstore
 
-// ExchangeChainBlockstore is the blockstore to be used when exchanging blobs
+// ExchangeBlockstore is the blockstore to be used when exchanging blobs
 // over the network, such as when using Bitswap, Graphsync, and possibly
-// ChainExchange.
-//
-// Usually, this store bypasses caches to avoid cache thrashing by untrusted
-// parties.
-type ExchangeChainBlockstore blockstore.Blockstore
+// ChainExchange. Because this store serves untrusted parties, it bypasses
+// all caches to avoid network-controlled thrashing, and other risks.
+type ExchangeBlockstore blockstore.Blockstore
 
 type ChainBitswap exchange.Interface
 type ChainBlockService bserv.BlockService

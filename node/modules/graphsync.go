@@ -13,7 +13,7 @@ import (
 )
 
 // Graphsync creates a graphsync instance from the given loader and storer
-func Graphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, clientBs dtypes.ClientBlockstore, chainBs dtypes.ExchangeChainBlockstore, h host.Host) (dtypes.Graphsync, error) {
+func Graphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, clientBs dtypes.ClientBlockstore, chainBs dtypes.ExchangeBlockstore, h host.Host) (dtypes.Graphsync, error) {
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
 	loader := storeutil.LoaderForBlockstore(clientBs)
 	storer := storeutil.StorerForBlockstore(clientBs)
