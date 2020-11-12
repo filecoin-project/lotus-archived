@@ -79,7 +79,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletA
 		}
 	}
 
-	store := sm.ChainStore().StateStore(ctx)
+	store := sm.ChainStore().ActorStore(ctx)
 	blsmsgroot, err := toArray(store, blsMsgCids)
 	if err != nil {
 		return nil, xerrors.Errorf("building bls amt: %w", err)

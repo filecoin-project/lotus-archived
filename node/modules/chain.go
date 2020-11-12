@@ -1,18 +1,13 @@
 package modules
 
 import (
-	"bytes"
 	"context"
 	"io"
-	"os"
 	"time"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-metrics-interface"
-	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -27,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
@@ -36,11 +30,10 @@ import (
 	"github.com/filecoin-project/lotus/lib/timedbs"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
-	"github.com/filecoin-project/lotus/node/repo"
 )
 
 // ChainBitswap uses a blockstore that bypasses all caches.
-func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ExchangeBlockstore) dtypes.ChainBitswap {
+func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ExposedBlockstore) dtypes.ChainBitswap {
 	gcbs := blockstore.NewGCBlockstore(bs, blockstore.NewGCLocker())
 
 	// prefix protocol for chain bitswap
@@ -66,6 +59,10 @@ func ChainBitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt r
 	return exch
 }
 
+func ChainBlockService(bs dtypes.ExposedBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
+	return blockservice.New(bs, rem)
+}
+
 func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS, nn dtypes.NetworkName, j journal.Journal) (*messagepool.MessagePool, error) {
 	mpp := messagepool.NewProvider(sm, ps)
 	mp, err := messagepool.New(mpp, ds, nn, j)
@@ -80,151 +77,14 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 	return mp, nil
 }
 
-// BareMonolithBlockstore returns a bare local blockstore for chain and state
-// data, with direct access. In the future, both data domains may be segregated
-// into individual blockstores.
-func BareMonolithBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.BareMonolithBlockstore, error) {
-	bs, err := r.Blockstore(repo.BlockstoreMonolith)
-	if err != nil {
-		return nil, err
-	}
-	if c, ok := bs.(io.Closer); ok {
-		lc.Append(fx.Hook{
-			OnStop: func(_ context.Context) error {
-				return c.Close()
-			},
-		})
-	}
-	return bs, err
-}
-
-func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMonolithBlockstore) (dtypes.StateBlockstore, error) {
-	// TODO potentially replace this cached blockstore by a CBOR cache.
-	mctx = metrics.CtxScope(mctx, "state_cache")
-	cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
-	if err != nil {
-		return nil, err
-	}
-	// this may end up double closing the underlying blockstore, but all
-	// blockstores should be lenient or idempotent on double-close. The native
-	// badger blockstore is (and unit tested).
-	if c, ok := bs.(io.Closer); ok {
-		lc.Append(closerStopHook(c))
-	}
-	return cbs, nil
-}
-
-// ChainBlockstore takes a bare local blockstore and wraps it in the
-// configured cache.
-func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMonolithBlockstore) (dtypes.ChainBlockstore, error) {
-	// TODO potentially replace this cached blockstore by a CBOR cache.
-	mctx = metrics.CtxScope(mctx, "chain_cache")
-	cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
-	if err != nil {
-		return nil, err
-	}
-	// this may end up double closing the underlying blockstore, but all
-	// blockstores should be lenient or idempotent on double-close. The native
-	// badger blockstore is (and unit tested).
-	if c, ok := bs.(io.Closer); ok {
-		lc.Append(closerStopHook(c))
-	}
-	return cbs, nil
-}
-
-func ChainBlockService(bs dtypes.ExchangeBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
-	return blockservice.New(bs, rem)
-}
-
-func FallbackMonolithBlockstore(rbs dtypes.ChainBlockstore) dtypes.StateBlockstore {
-	return &blockstore.FallbackStore{
-		Blockstore: rbs,
-	}
-}
-
-func InitFallbackBlockstore(cbs dtypes.BareMonolithBlockstore, rem dtypes.ChainBitswap) error {
-	fbs, ok := cbs.(*blockstore.FallbackStore)
-	if !ok {
-		return xerrors.Errorf("expected a FallbackStore")
-	}
-
-	fbs.SetFallback(rem.GetBlock)
-	return nil
-}
-
-// ChainStore constructs a new chain store. It gets two blockstores:
-//
-//   (1) a blockstore that may optionally fall back to bitswap to fetch objects
-//       that don't exist locally, and
-//   (2) a store that's guaranteed to be local only, for strict local-only
-//       operations.
-func ChainStore(bs dtypes.StateBlockstore, localbs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
-	chain := store.NewChainStore(bs, localbs, ds, syscalls, j)
+func ChainStore(cbs dtypes.ChainBlockstore, sbs dtypes.StateBlockstore, ds dtypes.MetadataDS, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
+	chain := store.NewChainStore(cbs, sbs, ds, syscalls, j)
 
 	if err := chain.Load(); err != nil {
 		log.Warnf("loading chain state from disk: %s", err)
 	}
 
 	return chain
-}
-
-func ErrorGenesis() Genesis {
-	return func() (header *types.BlockHeader, e error) {
-		return nil, xerrors.New("No genesis block provided, provide the file with 'lotus daemon --genesis=[genesis file]'")
-	}
-}
-
-func LoadGenesis(genBytes []byte) func(dtypes.StateBlockstore) Genesis {
-	return func(bs dtypes.StateBlockstore) Genesis {
-		return func() (header *types.BlockHeader, e error) {
-			c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
-			if err != nil {
-				return nil, xerrors.Errorf("loading genesis car file failed: %w", err)
-			}
-			if len(c.Roots) != 1 {
-				return nil, xerrors.New("expected genesis file to have one root")
-			}
-			root, err := bs.Get(c.Roots[0])
-			if err != nil {
-				return nil, err
-			}
-
-			h, err := types.DecodeBlock(root.RawData())
-			if err != nil {
-				return nil, xerrors.Errorf("decoding block failed: %w", err)
-			}
-			return h, nil
-		}
-	}
-}
-
-func DoSetGenesis(_ dtypes.AfterGenesisSet) {}
-
-func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error) {
-	genFromRepo, err := cs.GetGenesis()
-	if err == nil {
-		if os.Getenv("LOTUS_SKIP_GENESIS_CHECK") != "_yes_" {
-			expectedGenesis, err := g()
-			if err != nil {
-				return dtypes.AfterGenesisSet{}, xerrors.Errorf("getting expected genesis failed: %w", err)
-			}
-
-			if genFromRepo.Cid() != expectedGenesis.Cid() {
-				return dtypes.AfterGenesisSet{}, xerrors.Errorf("genesis in the repo is not the one expected by this version of Lotus!")
-			}
-		}
-		return dtypes.AfterGenesisSet{}, nil // already set, noop
-	}
-	if err != datastore.ErrNotFound {
-		return dtypes.AfterGenesisSet{}, xerrors.Errorf("getting genesis block failed: %w", err)
-	}
-
-	genesis, err := g()
-	if err != nil {
-		return dtypes.AfterGenesisSet{}, xerrors.Errorf("genesis func failed: %w", err)
-	}
-
-	return dtypes.AfterGenesisSet{}, cs.SetGenesis(genesis)
 }
 
 func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, us stmgr.UpgradeSchedule, _ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {

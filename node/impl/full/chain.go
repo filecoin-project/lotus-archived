@@ -212,7 +212,7 @@ func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpo
 }
 
 func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
-	blk, err := m.Chain.Blockstore().Get(obj)
+	blk, err := m.Chain.StateBlockstore().Get(obj)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
 	}
@@ -221,15 +221,15 @@ func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, er
 }
 
 func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
-	return a.Chain.Blockstore().DeleteBlock(obj)
+	return a.Chain.StateBlockstore().DeleteBlock(obj)
 }
 
 func (m *ChainModule) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
-	return m.Chain.Blockstore().Has(obj)
+	return m.Chain.StateBlockstore().Has(obj)
 }
 
 func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (api.ObjStat, error) {
-	bs := a.Chain.Blockstore()
+	bs := a.Chain.StateBlockstore()
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 
 	dag := merkledag.NewDAGService(bsvc)
@@ -514,7 +514,7 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 		return nil, xerrors.Errorf("parsing path: %w", err)
 	}
 
-	bs := a.Chain.Blockstore()
+	bs := a.Chain.StateBlockstore()
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 
 	dag := merkledag.NewDAGService(bsvc)

@@ -19,30 +19,32 @@ import (
 	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
-// MetadataDS stores metadata
-// dy default it's namespaced under /metadata in main repo datastore
+// MetadataDS stores metadata. By default it's namespaced under /metadata in
+// main repo datastore.
 type MetadataDS datastore.Batching
 
-// BareMonolithBlockstore is the current monolithic blockstore as opened from
-// the filesystem, with no caching on top. It may be overriden by a
-// Bitswap-fallback if that setting is enabled.
-type BareMonolithBlockstore blockstore.Blockstore
+type (
+	// BareMonolithBlockstore is the current monolithic blockstore as opened from
+	// the filesystem, with no caching on top. It may be overriden by a
+	// Bitswap-fallback if that setting is enabled.
+	BareMonolithBlockstore blockstore.Blockstore
 
-// ChainBlockstore is a blockstore to store chain data. It is currently a
-// synonym of the BareMonolithBlockstore, but it is fronted by a dedicated
-// chain data cache.
-type ChainBlockstore blockstore.Blockstore
+	// ChainBlockstore is a blockstore to store chain data. It is currently a
+	// synonym of the BareMonolithBlockstore, but it is fronted by a dedicated
+	// chain data cache.
+	ChainBlockstore blockstore.Blockstore
 
-// StateBlockstore is a blockstore to store state data. It is currently a
-// synonym of the BareMonolithiBlockstore, but it is frontend by a dedicated
-// state data cache.
-type StateBlockstore blockstore.Blockstore
+	// StateBlockstore is a blockstore to store state data. It is currently a
+	// synonym of the BareMonolithiBlockstore, but it is frontend by a dedicated
+	// state data cache.
+	StateBlockstore blockstore.Blockstore
 
-// ExchangeBlockstore is the blockstore to be used when exchanging blobs
-// over the network, such as when using Bitswap, Graphsync, and possibly
-// ChainExchange. Because this store serves untrusted parties, it bypasses
-// all caches to avoid network-controlled thrashing, and other risks.
-type ExchangeBlockstore blockstore.Blockstore
+	// ExposedBlockstore is the blockstore that's safe to expose externally, useful
+	// when exchanging blobs over the network, such as when using Bitswap,
+	// Graphsync, and the JSON-RPC APIs. Operations on this store do not affect the
+	// caches, and thus prevents untrusted parties from affecting the cache.
+	ExposedBlockstore blockstore.Blockstore
+)
 
 type ChainBitswap exchange.Interface
 type ChainBlockService bserv.BlockService

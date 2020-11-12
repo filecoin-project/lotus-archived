@@ -139,7 +139,7 @@ const (
 	HeadMetricsKey
 	SettlePaymentChannelsKey
 	RunPeerTaggerKey
-	SetupFallbackBlockstoreKey
+	SetupFallbackBlockstoresKey
 
 	SetApiEndpointKey
 
@@ -523,12 +523,13 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.MetadataDS), modules.Datastore),
 			Override(new(dtypes.BareMonolithBlockstore), modules.BareMonolithBlockstore),
 			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
-			Override(new(dtypes.StateBlockstore), From(new(dtypes.ChainBlockstore))),
-			Override(new(dtypes.ExchangeBlockstore), From(new(dtypes.BareMonolithBlockstore))),
+			Override(new(dtypes.StateBlockstore), modules.StateBlockstore),
+			Override(new(dtypes.ExposedBlockstore), From(new(dtypes.BareMonolithBlockstore))),
 
 			If(os.Getenv("LOTUS_ENABLE_CHAINSTORE_FALLBACK") == "1",
-				Override(new(dtypes.StateBlockstore), modules.FallbackMonolithBlockstore),
-				Override(SetupFallbackBlockstoreKey, modules.InitFallbackBlockstore),
+				Override(new(dtypes.ChainBlockstore), modules.FallbackChainBlockstore),
+				Override(new(dtypes.StateBlockstore), modules.FallbackStateBlockstore),
+				Override(SetupFallbackBlockstoresKey, modules.InitFallbackBlockstores),
 			),
 
 			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
