@@ -55,7 +55,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -140,7 +139,7 @@ const (
 	HeadMetricsKey
 	SettlePaymentChannelsKey
 	RunPeerTaggerKey
-	SetupFallbackBlockstoreKey
+	SetupFallbackBlockstoresKey
 
 	SetApiEndpointKey
 
@@ -264,8 +263,6 @@ func Online() Option {
 			Override(new(api.WalletAPI), From(new(wallet.MultiWallet))),
 			Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 
-			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
-			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),
 			Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
 			Override(new(dtypes.ChainBlockService), modules.ChainBlockService),
 
@@ -524,12 +521,15 @@ func Repo(r repo.Repo) Option {
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 
 			Override(new(dtypes.MetadataDS), modules.Datastore),
-			Override(new(dtypes.ChainRawBlockstore), modules.ChainRawBlockstore),
-			Override(new(dtypes.ChainBlockstore), From(new(dtypes.ChainRawBlockstore))),
+			Override(new(dtypes.BareMonolithBlockstore), modules.BareMonolithBlockstore),
+			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
+			Override(new(dtypes.StateBlockstore), modules.StateBlockstore),
+			Override(new(dtypes.ExposedBlockstore), From(new(dtypes.BareMonolithBlockstore))),
 
 			If(os.Getenv("LOTUS_ENABLE_CHAINSTORE_FALLBACK") == "1",
 				Override(new(dtypes.ChainBlockstore), modules.FallbackChainBlockstore),
-				Override(SetupFallbackBlockstoreKey, modules.SetupFallbackBlockstore),
+				Override(new(dtypes.StateBlockstore), modules.FallbackStateBlockstore),
+				Override(SetupFallbackBlockstoresKey, modules.InitFallbackBlockstores),
 			),
 
 			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
