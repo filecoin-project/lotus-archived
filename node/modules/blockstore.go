@@ -34,7 +34,7 @@ func BareMonolithBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.BareMono
 
 // StateBlockstore returns the blockstore to use to store the state tree.
 func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMonolithBlockstore) (dtypes.StateBlockstore, error) {
-	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs)
+	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), "state", bs)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMon
 
 // ChainBlockstore returns the blockstore to use for chain data (tipsets, blocks, messages).
 func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMonolithBlockstore) (dtypes.ChainBlockstore, error) {
-	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs)
+	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), "chain", bs)
 	if err != nil {
 		return nil, err
 	}
