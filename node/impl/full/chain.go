@@ -75,10 +75,10 @@ type ChainAPI struct {
 
 	Chain *store.ChainStore
 
-	// ExposedBlockstore is the global monolith blockstore that is safe to
+	// ServingBlockstore is the global monolith blockstore that is safe to
 	// expose externally. In the future, this will be segregated into two
 	// blockstores.
-	ExposedBlockstore dtypes.ExposedBlockstore
+	ServingBlockstore dtypes.ExposedBlockstore
 }
 
 func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
@@ -232,7 +232,7 @@ func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, er
 }
 
 func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
-	return a.ExposedBlockstore.DeleteBlock(obj)
+	return a.ServingBlockstore.DeleteBlock(obj)
 }
 
 func (m *ChainModule) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
@@ -240,7 +240,7 @@ func (m *ChainModule) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error
 }
 
 func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (api.ObjStat, error) {
-	bs := a.ExposedBlockstore
+	bs := a.ServingBlockstore
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 
 	dag := merkledag.NewDAGService(bsvc)
@@ -525,7 +525,7 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 		return nil, xerrors.Errorf("parsing path: %w", err)
 	}
 
-	bs := a.Chain.StateBlockstore()
+	bs := a.ServingBlockstore
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 
 	dag := merkledag.NewDAGService(bsvc)

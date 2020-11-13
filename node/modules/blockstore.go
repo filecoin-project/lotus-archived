@@ -34,7 +34,11 @@ func BareMonolithBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.BareMono
 
 // StateBlockstore returns the blockstore to use to store the state tree.
 func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMonolithBlockstore) (dtypes.StateBlockstore, error) {
-	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), "state", bs)
+	sbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs, blockstore.FreecacheConfig{
+		Name:           "state",
+		BlockCapacity:  1 << 28, // 256MiB.
+		ExistsCapacity: 1 << 25, // 32MiB.
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -44,12 +48,16 @@ func StateBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMon
 	if c, ok := bs.(io.Closer); ok {
 		lc.Append(closerStopHook(c))
 	}
-	return cbs, nil
+	return sbs, nil
 }
 
 // ChainBlockstore returns the blockstore to use for chain data (tipsets, blocks, messages).
 func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.BareMonolithBlockstore) (dtypes.ChainBlockstore, error) {
-	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), "chain", bs)
+	cbs, err := blockstore.WrapFreecacheCache(helpers.LifecycleCtx(mctx, lc), bs, blockstore.FreecacheConfig{
+		Name:           "chain",
+		BlockCapacity:  1 << 27, // 128MiB.
+		ExistsCapacity: 1 << 24, // 16MiB.
+	})
 	if err != nil {
 		return nil, err
 	}

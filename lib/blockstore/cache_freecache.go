@@ -33,22 +33,28 @@ type FreecacheCachingBlockstore struct {
 var _ Blockstore = (*FreecacheCachingBlockstore)(nil)
 var _ Viewer = (*FreecacheCachingBlockstore)(nil)
 
-func WrapFreecacheCache(ctx context.Context, name string, inner Blockstore) (*FreecacheCachingBlockstore, error) {
+type FreecacheConfig struct {
+	Name           string
+	BlockCapacity  int
+	ExistsCapacity int
+}
+
+func WrapFreecacheCache(ctx context.Context, inner Blockstore, config FreecacheConfig) (*FreecacheCachingBlockstore, error) {
 	v, _ := inner.(Viewer)
 	c := &FreecacheCachingBlockstore{
-		blockCache:  freecache.NewCache(1 << 28), // 512MiB.
-		existsCache: freecache.NewCache(1 << 26), // 64MiB.
+		blockCache:  freecache.NewCache(config.BlockCapacity),
+		existsCache: freecache.NewCache(config.ExistsCapacity),
 		inner:       inner,
 		viewer:      v,
 	}
 
 	go func() {
-		blockCacheTag, err := tag.New(ctx, tag.Insert(CacheName, name+"_block_cache"))
+		blockCacheTag, err := tag.New(ctx, tag.Insert(CacheName, config.Name+"_block_cache"))
 		if err != nil {
 			log.Warnf("blockstore metrics: failed to instantiate block cache tag: %s", err)
 			return
 		}
-		existsCacheTag, err := tag.New(ctx, tag.Insert(CacheName, name+"_exists_cache"))
+		existsCacheTag, err := tag.New(ctx, tag.Insert(CacheName, config.Name+"_exists_cache"))
 		if err != nil {
 			log.Warnf("blockstore metrics: failed to instantiate exists cache tag: %s", err)
 			return

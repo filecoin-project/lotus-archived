@@ -365,7 +365,7 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	}
 
 	// Finally, flush.
-	return vm.Copy(context.TODO(), blockstore, syncer.store.StateBlockstore(), smroot)
+	return vm.Copy(context.TODO(), blockstore, syncer.store.ChainBlockstore(), smroot)
 }
 
 func (syncer *Syncer) LocalPeer() peer.ID {
@@ -1177,7 +1177,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	// Finally, flush.
-	return vm.Copy(ctx, tmpbs, syncer.store.StateBlockstore(), mrcid)
+	return vm.Copy(ctx, tmpbs, syncer.store.ChainBlockstore(), mrcid)
 }
 
 func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig *crypto.Signature, msgs []cid.Cid, pubks [][]byte) error {
@@ -1564,7 +1564,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 				return err
 			}
 
-			if err := copyBlockstore(ctx, bs, syncer.store.StateBlockstore()); err != nil {
+			if err := copyBlockstore(ctx, bs, syncer.store.ChainBlockstore()); err != nil {
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 		}
