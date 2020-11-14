@@ -4,11 +4,11 @@ import (
 	"errors"
 
 	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/lib/blockstore"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -54,7 +54,7 @@ type LockedRepo interface {
 	Datastore(namespace string) (datastore.Batching, error)
 
 	// Blockstore returns an IPLD blockstore for the requested domain.
-	Blockstore(domain BlockstoreDomain) (blockstore.Blockstore, error)
+	Blockstore(domain BlockstoreDomain) (blockstore.LotusBlockstore, error)
 
 	// Returns config in this repo
 	Config() (interface{}, error)
