@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	blocks "github.com/ipfs/go-block-format"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 func TestBadgerBlockstore(t *testing.T) {
-	(&Suite{
+	(&blockstore.TestSuite{
 		NewBlockstore:  newBlockstore(DefaultOptions),
 		OpenBlockstore: openBlockstore(DefaultOptions),
 	}).RunTests(t, "non_prefixed")
@@ -22,7 +23,7 @@ func TestBadgerBlockstore(t *testing.T) {
 		return opts
 	}
 
-	(&Suite{
+	(&blockstore.TestSuite{
 		NewBlockstore:  newBlockstore(prefixed),
 		OpenBlockstore: openBlockstore(prefixed),
 	}).RunTests(t, "prefixed")

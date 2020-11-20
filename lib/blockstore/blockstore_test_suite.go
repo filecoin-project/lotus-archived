@@ -1,4 +1,4 @@
-package badgerbs
+package blockstore
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	u "github.com/ipfs/go-ipfs-util"
@@ -17,17 +16,17 @@ import (
 )
 
 // TODO: move this to go-ipfs-blockstore.
-type Suite struct {
-	NewBlockstore  func(tb testing.TB) (bs blockstore.Blockstore, path string)
-	OpenBlockstore func(tb testing.TB, path string) (bs blockstore.Blockstore, err error)
+type TestSuite struct {
+	NewBlockstore  func(tb testing.TB) (bs Blockstore, path string)
+	OpenBlockstore func(tb testing.TB, path string) (bs Blockstore, err error)
 }
 
-func (s *Suite) RunTests(t *testing.T, prefix string) {
+func (s *TestSuite) RunTests(t *testing.T, prefix string) {
 	v := reflect.TypeOf(s)
 	f := func(t *testing.T) {
 		for i := 0; i < v.NumMethod(); i++ {
 			if m := v.Method(i); strings.HasPrefix(m.Name, "Test") {
-				f := m.Func.Interface().(func(*Suite, *testing.T))
+				f := m.Func.Interface().(func(*TestSuite, *testing.T))
 				t.Run(m.Name, func(t *testing.T) {
 					f(s, t)
 				})
@@ -42,7 +41,7 @@ func (s *Suite) RunTests(t *testing.T, prefix string) {
 	}
 }
 
-func (s *Suite) TestGetWhenKeyNotPresent(t *testing.T) {
+func (s *TestSuite) TestGetWhenKeyNotPresent(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -51,20 +50,20 @@ func (s *Suite) TestGetWhenKeyNotPresent(t *testing.T) {
 	c := cid.NewCidV0(u.Hash([]byte("stuff")))
 	bl, err := bs.Get(c)
 	require.Nil(t, bl)
-	require.Equal(t, blockstore.ErrNotFound, err)
+	require.Equal(t, ErrNotFound, err)
 }
 
-func (s *Suite) TestGetWhenKeyIsNil(t *testing.T) {
+func (s *TestSuite) TestGetWhenKeyIsNil(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
 	}
 
 	_, err := bs.Get(cid.Undef)
-	require.Equal(t, blockstore.ErrNotFound, err)
+	require.Equal(t, ErrNotFound, err)
 }
 
-func (s *Suite) TestPutThenGetBlock(t *testing.T) {
+func (s *TestSuite) TestPutThenGetBlock(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -80,7 +79,7 @@ func (s *Suite) TestPutThenGetBlock(t *testing.T) {
 	require.Equal(t, orig.RawData(), fetched.RawData())
 }
 
-func (s *Suite) TestHas(t *testing.T) {
+func (s *TestSuite) TestHas(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -100,7 +99,7 @@ func (s *Suite) TestHas(t *testing.T) {
 	require.False(t, ok)
 }
 
-func (s *Suite) TestCidv0v1(t *testing.T) {
+func (s *TestSuite) TestCidv0v1(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -116,7 +115,7 @@ func (s *Suite) TestCidv0v1(t *testing.T) {
 	require.Equal(t, orig.RawData(), fetched.RawData())
 }
 
-func (s *Suite) TestPutThenGetSizeBlock(t *testing.T) {
+func (s *TestSuite) TestPutThenGetSizeBlock(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -141,11 +140,11 @@ func (s *Suite) TestPutThenGetSizeBlock(t *testing.T) {
 	require.Zero(t, emptySize)
 
 	missingSize, err := bs.GetSize(missingBlock.Cid())
-	require.Equal(t, blockstore.ErrNotFound, err)
+	require.Equal(t, ErrNotFound, err)
 	require.Equal(t, -1, missingSize)
 }
 
-func (s *Suite) TestAllKeysSimple(t *testing.T) {
+func (s *TestSuite) TestAllKeysSimple(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -161,7 +160,7 @@ func (s *Suite) TestAllKeysSimple(t *testing.T) {
 	require.ElementsMatch(t, keys, actual)
 }
 
-func (s *Suite) TestAllKeysRespectsContext(t *testing.T) {
+func (s *TestSuite) TestAllKeysRespectsContext(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -189,7 +188,7 @@ func (s *Suite) TestAllKeysRespectsContext(t *testing.T) {
 	require.False(t, ok)
 }
 
-func (s *Suite) TestDoubleClose(t *testing.T) {
+func (s *TestSuite) TestDoubleClose(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	c, ok := bs.(io.Closer)
 	if !ok {
@@ -199,7 +198,7 @@ func (s *Suite) TestDoubleClose(t *testing.T) {
 	require.NoError(t, c.Close())
 }
 
-func (s *Suite) TestReopenPutGet(t *testing.T) {
+func (s *TestSuite) TestReopenPutGet(t *testing.T) {
 	bs, path := s.NewBlockstore(t)
 	c, ok := bs.(io.Closer)
 	if !ok {
@@ -224,7 +223,7 @@ func (s *Suite) TestReopenPutGet(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (s *Suite) TestPutMany(t *testing.T) {
+func (s *TestSuite) TestPutMany(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -255,7 +254,7 @@ func (s *Suite) TestPutMany(t *testing.T) {
 	require.Len(t, cids, 3)
 }
 
-func (s *Suite) TestDelete(t *testing.T) {
+func (s *TestSuite) TestDelete(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -288,7 +287,7 @@ func (s *Suite) TestDelete(t *testing.T) {
 
 }
 
-func insertBlocks(t *testing.T, bs blockstore.Blockstore, count int) []cid.Cid {
+func insertBlocks(t *testing.T, bs Blockstore, count int) []cid.Cid {
 	keys := make([]cid.Cid, count)
 	for i := 0; i < count; i++ {
 		block := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))
