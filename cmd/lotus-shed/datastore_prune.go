@@ -93,10 +93,10 @@ var datastorePruneCmd = &cli.Command{
 		var cnt int64
 		err = cs.WalkSnapshot(context.Background(), head, head.Height(), false, func(cid cid.Cid) error {
 			return viewer.View(cid, func(b []byte) error {
-				cnt++
 				if cnt%10000 == 0 {
 					log.Infof("importing block %d", cnt)
 				}
+				cnt++
 				blk, _ := blocks.NewBlockWithCid(b, cid)
 				return dstBs.Put(blk)
 			})

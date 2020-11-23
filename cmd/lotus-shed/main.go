@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
+	_ "net/http/pprof"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -13,6 +15,11 @@ import (
 var log = logging.Logger("lotus-shed")
 
 func main() {
+	go func() {
+		log.Infof("starting pprof handler at localhost:6060")
+		_ = http.ListenAndServe("localhost:6060", nil)
+	}()
+
 	logging.SetLogLevel("*", "INFO")
 
 	local := []*cli.Command{
