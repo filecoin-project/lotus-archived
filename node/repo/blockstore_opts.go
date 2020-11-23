@@ -1,6 +1,9 @@
 package repo
 
-import badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
+import (
+	badgerbs "github.com/filecoin-project/lotus/lib/blockstore/badger"
+	leveldbbs "github.com/filecoin-project/lotus/lib/blockstore/leveldb"
+)
 
 // BadgerBlockstoreOptions returns the badger options to apply for the provided
 // domain.
@@ -48,4 +51,14 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 	opts.ReadOnly = readonly
 
 	return opts, nil
+}
+
+// LevelDBBlockstoreOptions returns a set of default options for a LevelDB
+// blockstore.
+func LevelDBBlockstoreOptions(domain BlockstoreDomain, readonly bool) (leveldbbs.Options, error) {
+	opts := leveldbbs.DefaultOptions(string(domain))
+	if readonly {
+		opts.ReadOnly = true
+	}
+	return *opts, nil
 }

@@ -31,6 +31,7 @@ var datastoreCmd = &cli.Command{
 		datastoreListCmd,
 		datastoreGetCmd,
 		datastoreRewriteCmd,
+		datastorePruneCmd,
 	},
 }
 

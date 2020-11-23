@@ -55,11 +55,13 @@ var _ blockstore.Blockstore = (*Blockstore)(nil)
 var _ blockstore.Viewer = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 
-func DefaultOptions() *Options {
+func DefaultOptions(name string) *Options {
 	var opts Options
-	opts.Filter = filter.NewBloomFilter(1)
+	opts.Filter = filter.NewBloomFilter(10)
 	opts.BlockCacheCapacity = 512 << 20
 	opts.WriteBuffer = 16 << 20
+	opts.DisableSeeksCompaction = true
+	opts.Name = name
 	return &opts
 }
 
