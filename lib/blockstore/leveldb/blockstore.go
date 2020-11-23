@@ -4,16 +4,18 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -22,20 +24,21 @@ import (
 	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
-// ErrBlockstoreClosed is returned from certain blockstore operations after
-// the blockstore has been closed.
-var ErrBlockstoreClosed = fmt.Errorf("leveldb blockstore closed")
+var (
+	// MetricsFrequency defines the frequency at which we'll record leveldb metrics.
+	MetricsFrequency = 5 * time.Second
 
-var log = logger.Logger("leveldbbs")
+	log = logger.Logger("leveldbbs")
+)
 
 // Options is an alias of syndtr/goleveldb/opt.Options which might be extended
 // in the future.
 type Options struct {
 	opt.Options
 
-	// MetricsPrefix is the prefix to prepend to metrics emitted by the leveldb
-	// blockstore.
-	MetricsPrefix string
+	// Name is the name by which to identify this blockstore in the system.
+	// It is used to namespace metrics.
+	Name string
 }
 
 // Blockstore is a leveldb-backed IPLD blockstore.
@@ -43,10 +46,9 @@ type Blockstore struct {
 	DB *leveldb.DB
 
 	// status guarded by atomic; 0 for active, 1 for closed.
-	status     int32
-	closing    chan struct{}
-	wg         sync.WaitGroup
-	metricsErr atomic.Value
+	status  int32
+	closing chan struct{}
+	wg      sync.WaitGroup
 }
 
 var _ blockstore.Blockstore = (*Blockstore)(nil)
@@ -84,7 +86,75 @@ func Open(path string, opts *Options) (*Blockstore, error) {
 		DB:      db,
 		closing: make(chan struct{}),
 	}
+
+	ctx := context.Background()
+	if opts.Name != "" {
+		var err error
+		ctx, err = tag.New(context.Background(), tag.Insert(TagName, opts.Name))
+		if err != nil {
+			log.Warnf("failed to instantiate metrics tag; metrics will be untagged; err: %s", err)
+		}
+	}
+
+	go bs.recordMetrics(ctx, MetricsFrequency)
+
 	return bs, nil
+}
+
+func (b *Blockstore) recordMetrics(ctx context.Context, freq time.Duration) {
+	defer b.wg.Done()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Warnf("metrics crashed; reporting interrupted: %s", r)
+		}
+	}()
+
+	var st leveldb.DBStats
+	for {
+		select {
+		case <-time.After(freq):
+			if err := b.DB.Stats(&st); err != nil {
+				log.Warnf("failed to acquire leveldb stats: %s", err)
+				continue
+			}
+
+			var writePaused int64
+			if st.WritePaused {
+				writePaused = 1
+			}
+
+			// record simple metrics first.
+			stats.Record(ctx,
+				Metrics.BlockCacheSize.M(int64(st.BlockCacheSize)),
+				Metrics.IORead.M(int64(st.IORead)),
+				Metrics.IOWrite.M(int64(st.IOWrite)),
+				Metrics.AliveIterators.M(int64(st.AliveIterators)),
+				Metrics.AliveSnapshots.M(int64(st.AliveSnapshots)),
+				Metrics.OpenedTables.M(int64(st.OpenedTablesCount)),
+				Metrics.WriteDelay.M(int64(st.WriteDelayCount)),
+				Metrics.WriteDelayDuration.M(st.WriteDelayDuration.Milliseconds()),
+				Metrics.WritePaused.M(writePaused),
+			)
+
+			// looking at source, level metrics are guaranteed to be equal
+			// length; just in case, we recover from panics.
+			for i := 0; i < len(st.LevelRead); i++ {
+				if err := stats.RecordWithTags(ctx,
+					[]tag.Mutator{tag.Insert(TagLevel, strconv.Itoa(i))},
+					Metrics.LevelRead.M(st.LevelRead[i]),
+					Metrics.LevelWrite.M(st.LevelWrite[i]),
+					Metrics.LevelTableCount.M(int64(st.LevelTablesCounts[i])),
+					Metrics.LevelSize.M(st.LevelSizes[i]),
+					Metrics.LevelCompactionTime.M(st.LevelDurations[i].Milliseconds()),
+				); err != nil {
+					log.Warnf("failed to record metrics for level %d: %s", i, err)
+				}
+			}
+
+		case <-b.closing:
+			return
+		}
+	}
 }
 
 // Close closes the store. If the store has already been closed, this noops and
@@ -99,13 +169,7 @@ func (b *Blockstore) Close() error {
 	close(b.closing)
 	b.wg.Wait()
 
-	var err *multierror.Error
-	if merr := b.metricsErr.Load(); merr != nil {
-		err = multierror.Append(err, merr.(error))
-	}
-
-	err = multierror.Append(err, b.DB.Close())
-	return err.ErrorOrNil()
+	return b.DB.Close()
 }
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
@@ -220,10 +284,4 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 // blockstore.
 func (b *Blockstore) HashOnRead(_ bool) {
 	log.Warnf("called HashOnRead on leveldb blockstore; function not supported; ignoring")
-}
-
-func (b *Blockstore) recordMetrics(s *leveldb.DBStats) {
-	stats.Record(context.Background())
-
-
 }
