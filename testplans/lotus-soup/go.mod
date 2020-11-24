@@ -12,12 +12,12 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.1.2
 	github.com/filecoin-project/go-state-types v0.0.0-20201102161440-c8033295a1fc
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/lotus v0.9.2-0.20201012041700-a2e0832a12f2
-	github.com/filecoin-project/oni/lotus-soup v0.0.0-20201016183302-a8430088b2b8
+	github.com/filecoin-project/lotus v1.2.2-0.20201124170156-a63ef1dcd549
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/go-multierror v1.1.0
+	github.com/influxdata/influxdb v1.8.3 // indirect
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ipfs-files v0.0.8
@@ -43,5 +43,3 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ../../extern/filecoin-ffi
 
 replace github.com/supranational/blst => ../../extern/blst
-
-replace github.com/filecoin-project/lotus => ../../
