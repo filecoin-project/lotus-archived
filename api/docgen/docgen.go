@@ -244,6 +244,7 @@ func init() {
 	addExample(map[sealtasks.TaskType]struct{}{
 		sealtasks.TTPreCommit2: {},
 	})
+	addExample(sealtasks.TTCommit2)
 }
 
 func exampleValue(method string, t, parent reflect.Type) interface{} {
