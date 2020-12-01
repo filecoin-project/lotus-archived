@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
+
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 var ledgerCmd = &cli.Command{
@@ -243,17 +246,34 @@ var ledgerSignTestCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Message: %x\n", b.RawData())
+		msgBytes := b.RawData()
+		fmt.Printf("Message: %x\n", msgBytes)
 
-		sig, err := fl.SignSECP256K1(p, b.RawData())
+		sig, err := fl.SignSECP256K1(p, msgBytes)
 		if err != nil {
 			return err
 		}
 
 		sigBytes := append([]byte{byte(crypto.SigTypeSecp256k1)}, sig.SignatureBytes()...)
 
-		fmt.Printf("Signature: %x\n", sigBytes)
+		fmt.Printf("Signature: %s\n", hex.EncodeToString(sigBytes))
+		var fSig crypto.Signature
+		if err := fSig.UnmarshalBinary(sigBytes); err != nil {
+			return err
+		}
 
+		_, _, ledgerAddrStr, err := fl.GetAddressPubKeySECP256K1(p)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("ledger addr: %s\n", ledgerAddrStr)
+		ledgerAddr, err := address.NewFromString(ledgerAddrStr)
+		if err != nil {
+			return err
+		}
+
+		err = sigs.Verify(&fSig, ledgerAddr, msgBytes)
+		fmt.Printf("err: %v", err)
 		return nil
 	},
 }
