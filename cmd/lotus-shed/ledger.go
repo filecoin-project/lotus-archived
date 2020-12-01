@@ -266,13 +266,16 @@ var ledgerSignTestCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("ledger addr: %s\n", ledgerAddrStr)
+		fmt.Printf("Ledger addr: %s\n", ledgerAddrStr)
 		ledgerAddr, err := address.NewFromString(ledgerAddrStr)
 		if err != nil {
 			return err
 		}
 
-		err = sigs.Verify(&fSig, ledgerAddr, msgBytes)
+		msgCid := b.Cid()
+		verifyBytes := msgCid.Bytes()
+		fmt.Printf("Verify bytes: %x\n", verifyBytes)
+		err = sigs.Verify(&fSig, ledgerAddr, verifyBytes)
 		fmt.Printf("err: %v", err)
 		return nil
 	},
