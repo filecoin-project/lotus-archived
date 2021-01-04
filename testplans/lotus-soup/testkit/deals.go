@@ -69,6 +69,6 @@ func WaitDealSealed(t *TestEnvironment, ctx context.Context, client api.FullNode
 			return
 		}
 
-		t.RecordMessage("deal state: %s", storagemarket.DealStates[di.State])
+		t.RecordMessage("\n\n\n\n\n  (Sealing) deal state: %s\n\n\n\n\n", storagemarket.DealStates[di.State])
 	}
 }

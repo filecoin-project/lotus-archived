@@ -15,6 +15,7 @@ var (
 	ClientsAddrsTopic = sync.NewTopic("clients_addrs", &ClientAddressesMsg{})
 	MinersAddrsTopic  = sync.NewTopic("miners_addrs", &MinerAddressesMsg{})
 	SlashedMinerTopic = sync.NewTopic("slashed_miner", &SlashedMinerMsg{})
+	ConfigNetTopic    = sync.NewTopic("config_net", &ConfigNetMsg{})
 	PubsubTracerTopic = sync.NewTopic("pubsub_tracer", &PubsubTracerMsg{})
 	DrandConfigTopic  = sync.NewTopic("drand_config", &DrandRuntimeInfo{})
 )
@@ -57,6 +58,9 @@ type MinerAddressesMsg struct {
 
 type SlashedMinerMsg struct {
 	MinerActorAddr address.Address
+}
+
+type ConfigNetMsg struct {
 }
 
 type PubsubTracerMsg struct {

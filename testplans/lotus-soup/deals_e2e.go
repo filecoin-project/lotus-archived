@@ -8,10 +8,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/testground/sdk-go/network"
+	"github.com/testground/sdk-go/sync"
+
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/testground/sdk-go/sync"
 
 	mbig "math/big"
 
@@ -39,10 +44,34 @@ import (
 // Then we create a genesis block that allocates some funds to each node and collects
 // the presealed sectors.
 func dealsE2E(t *testkit.TestEnvironment) error {
+	t.RecordMessage("running node with role '%s'", t.Role)
+
 	// Dispatch/forward non-client roles to defaults.
 	if t.Role != "client" {
 		return testkit.HandleDefaultRole(t)
 	}
+
+	recMsg := func(msg string) {
+		t.RecordMessage("\n\n\n\n\n  > %s\n\n\n\n\n", msg)
+	}
+	recMsg("client reducing network performance")
+
+	ctx := context.Background()
+	t.NetClient.MustConfigureNetwork(ctx, &network.Config{
+		Network:       "default",
+		RoutingPolicy: network.AllowAll,
+		Enable:        true,
+		Default: network.LinkShape{
+			Latency: 200 * time.Millisecond,
+			// Transferring ~4MB at 64k/s
+			// Transfer takes 4MB / 64k = 2^22 / 2^16 = 64 seconds
+			//Bandwidth: 64 * 1024,
+			Bandwidth: 256 * 1024,
+		},
+		CallbackState:  sync.State(fmt.Sprintf("net-slowdown-configured-%s", t.TestGroupID)),
+		CallbackTarget: 1,
+	})
+	recMsg("client reduced network performance")
 
 	// This is a client role
 	fastRetrieval := t.BooleanParam("fast_retrieval")
@@ -53,7 +82,6 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 		return err
 	}
 
-	ctx := context.Background()
 	client := cl.FullApi
 
 	// select a random miner
@@ -77,7 +105,7 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	// error: estimating gas used: message execution failed: exit 19, reason: failed to lock balance: failed to lock client funds: not enough balance to lock for addr t0102: escrow balance 0 < locked 0 + required 640297000 (RetCode=19)
 	time.Sleep(50 * time.Second)
 
-	// generate 1600 bytes of random data
+	// generate 5000000 bytes of random data
 	data := make([]byte, 5000000)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(data)
 
@@ -98,6 +126,88 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	}
 	t.RecordMessage("file cid: %s", fcid)
 
+	go func() {
+		updates, err := client.ClientGetDealUpdates(ctx)
+		if err != nil {
+			t.RecordFailure(err)
+			return
+		}
+		//reduced := false
+		for upd := range updates {
+			//if upd.State == storagemarket.StorageDealClientFunding && !reduced {
+			//	reduced = true
+			//	recMsg("client reducing network performance")
+			//	//t.SyncClient.MustPublish(ctx, testkit.ConfigNetTopic, testkit.ConfigNetMsg{})
+			//
+			//	t.NetClient.MustConfigureNetwork(ctx, &network.Config{
+			//		Network:       "default",
+			//		RoutingPolicy: network.AllowAll,
+			//		Enable:        true,
+			//		Default: network.LinkShape{
+			//			Latency: 200 * time.Millisecond,
+			//			// Transferring ~4MB at 64k/s
+			//			// Transfer takes 4MB / 64k = 2^22 / 2^16 = 64 seconds
+			//			//Bandwidth: 64 * 1024,
+			//			Bandwidth: 256 * 1024,
+			//		},
+			//		CallbackState:  sync.State(fmt.Sprintf("net-slowdown-configured-%s", t.TestGroupID)),
+			//		CallbackTarget: 1,
+			//	})
+			//	recMsg("client reduced network performance")
+			//}
+			var transferred uint64
+			if upd.DataTransfer != nil {
+				transferred = upd.DataTransfer.Transferred
+			}
+			recMsg(fmt.Sprintf("deal state: %s (sent %d)", storagemarket.DealStates[upd.State], transferred))
+		}
+	}()
+
+	//shutdownClient := func() {
+	//	recMsg("  **** Shutting down client ***")
+	//	err := cl.LotusNode.StopFn(ctx)
+	//	if err != nil {
+	//		t.RecordMessage("err from StopFn: %s", err.Error()) // TODO: expect this to be fixed on Lotus
+	//	}
+	//	err = cl.StopFn(ctx)
+	//	if err != nil {
+	//		t.RecordMessage("err from StopFn: %s", err.Error()) // TODO: expect this to be fixed on Lotus
+	//	}
+	//
+	//	time.Sleep(10 * time.Second)
+	//	recMsg("  **** restoring network performance")
+	//	t.NetClient.MustConfigureNetwork(ctx, &network.Config{
+	//		Network: "default",
+	//		Enable:  true,
+	//		Default: network.LinkShape{
+	//			Latency:   5 * time.Millisecond,
+	//			Bandwidth: 1024 * 1024 * 1024,
+	//		},
+	//		CallbackState:  sync.State(fmt.Sprintf("net-restore-configured-%s", t.TestGroupID)),
+	//		CallbackTarget: 1,
+	//	})
+	//}
+
+	go func() {
+		updates, err := client.ClientDataTransferUpdates(ctx)
+		if err != nil {
+			t.RecordFailure(err)
+			return
+		}
+
+		hasShutdown := false
+		for upd := range updates {
+			if upd.Status == datatransfer.Ongoing && !hasShutdown {
+				hasShutdown = true
+				//shutdownClient()
+			}
+
+			t.RecordMessage("\n\n\n\n\n  > data-transfer state: %s %d\n\n\n\n\n",
+				datatransfer.Statuses[upd.Status],
+				upd.Transferred)
+		}
+	}()
+
 	// start deal
 	t1 := time.Now()
 	deal := testkit.StartDeal(ctx, minerAddr.MinerActorAddr, client, fcid.Root, fastRetrieval)
@@ -110,24 +220,24 @@ func dealsE2E(t *testkit.TestEnvironment) error {
 	testkit.WaitDealSealed(t, ctx, client, deal)
 	t.D().ResettingHistogram("deal.sealed").Update(int64(time.Since(t1)))
 
-	// wait for all client deals to be sealed before trying to retrieve
-	t.SyncClient.MustSignalAndWait(ctx, sync.State("done-sealing"), t.IntParam("clients"))
-
-	carExport := true
-
-	t.RecordMessage("trying to retrieve %s", fcid)
-	t1 = time.Now()
-	_ = testkit.RetrieveData(t, ctx, client, fcid.Root, nil, carExport, data)
-	t.D().ResettingHistogram("deal.retrieved").Update(int64(time.Since(t1)))
-
-	t.SyncClient.MustSignalEntry(ctx, testkit.StateStopMining)
-
-	time.Sleep(10 * time.Second) // wait for metrics to be emitted
-
-	// TODO broadcast published content CIDs to other clients
-	// TODO select a random piece of content published by some other client and retrieve it
-
-	t.SyncClient.MustSignalAndWait(ctx, testkit.StateDone, t.TestInstanceCount)
+	//// wait for all client deals to be sealed before trying to retrieve
+	//t.SyncClient.MustSignalAndWait(ctx, sync.State("done-sealing"), t.IntParam("clients"))
+	//
+	//carExport := true
+	//
+	//t.RecordMessage("trying to retrieve %s", fcid)
+	//t1 = time.Now()
+	//_ = testkit.RetrieveData(t, ctx, client, fcid.Root, nil, carExport, data)
+	//t.D().ResettingHistogram("deal.retrieved").Update(int64(time.Since(t1)))
+	//
+	//t.SyncClient.MustSignalEntry(ctx, testkit.StateStopMining)
+	//
+	//time.Sleep(10 * time.Second) // wait for metrics to be emitted
+	//
+	//// TODO broadcast published content CIDs to other clients
+	//// TODO select a random piece of content published by some other client and retrieve it
+	//
+	//t.SyncClient.MustSignalAndWait(ctx, testkit.StateDone, t.TestInstanceCount)
 	return nil
 }
 
