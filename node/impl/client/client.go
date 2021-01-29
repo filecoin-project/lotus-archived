@@ -9,8 +9,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -20,6 +18,7 @@ import (
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
+	format "github.com/ipfs/go-ipld-format"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -33,6 +32,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
@@ -755,7 +755,11 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 	w := &writer.Writer{}
 	bw := bufio.NewWriterSize(w, int(writer.CommPBuf))
 
-	err := car.WriteCar(ctx, dag, []cid.Cid{root}, w)
+	var rawBlockSize uint64
+	err := car.WriteCarWithWalker(ctx, dag, []cid.Cid{root}, w, func(nd format.Node) ([]*format.Link, error) {
+		rawBlockSize += uint64(len(nd.RawData()))
+		return nd.Links(), nil
+	})
 	if err != nil {
 		return api.DataCIDSize{}, err
 	}
@@ -765,7 +769,20 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 	}
 
 	dataCIDSize, err := w.Sum()
-	return api.DataCIDSize(dataCIDSize), err
+	if err != nil {
+		return api.DataCIDSize{}, err
+	}
+
+	if err != nil {
+		return api.DataCIDSize{}, err
+	}
+
+	return api.DataCIDSize{
+		RawBlockSize: rawBlockSize,
+		PayloadSize:  dataCIDSize.PayloadSize,
+		PieceSize:    dataCIDSize.PieceSize,
+		PieceCID:     dataCIDSize.PieceCID,
+	}, nil
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {

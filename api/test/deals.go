@@ -49,13 +49,21 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, sta
 }
 
 func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestStorageNode, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
-	res, data, err := CreateClientFile(ctx, client, rseed)
+	//res, data, err := CreateClientFile(ctx, client, rseed)
+	res, _, err := CreateClientFile(ctx, client, rseed)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	fmt.Print("\n\n\n\n\n\n\n\n")
+
 	fcid := res.Root
 	fmt.Println("FILE CID: ", fcid)
+
+	dataCIDSize, err := client.ClientDealPieceCID(ctx, fcid)
+	require.NoError(t, err)
+	fmt.Println("File payload size:   ", dataCIDSize.PayloadSize)
+	fmt.Println("File raw block size: ", dataCIDSize.RawBlockSize)
 
 	deal := startDeal(t, ctx, miner, client, fcid, fastRet, startEpoch)
 
@@ -63,15 +71,16 @@ func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode,
 	time.Sleep(time.Second)
 	waitDealSealed(t, ctx, miner, client, deal, false)
 
-	// Retrieval
-	info, err := client.ClientGetDealInfo(ctx, *deal)
-	require.NoError(t, err)
-
-	testRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
+	//// Retrieval
+	//info, err := client.ClientGetDealInfo(ctx, *deal)
+	//require.NoError(t, err)
+	//
+	//testRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
 }
 
 func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api.ImportRes, []byte, error) {
-	data := make([]byte, 1600)
+	//data := make([]byte, 1600)
+	data := make([]byte, 5000000)
 	rand.New(rand.NewSource(int64(rseed))).Read(data)
 
 	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
@@ -286,7 +295,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 		},
 		Wallet:            addr,
 		Miner:             maddr,
-		EpochPrice:        types.NewInt(1000000),
+		EpochPrice:        types.NewInt(3906250),
 		DealStartEpoch:    startEpoch,
 		MinBlocksDuration: uint64(build.MinDealDuration),
 		FastRetrieval:     fastRet,
@@ -294,6 +303,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
+
 	return deal
 }
 
