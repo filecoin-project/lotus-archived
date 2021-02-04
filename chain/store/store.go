@@ -1560,6 +1560,39 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 	return nil
 }
 
+func (cs *ChainStore) ExportState(ctx context.Context, root cid.Cid, w io.Writer) error {
+	h := &car.CarHeader{
+		Roots:   []cid.Cid{root},
+		Version: 1,
+	}
+
+	if err := car.WriteHeader(h, w); err != nil {
+		return xerrors.Errorf("failed to write car header: %s", err)
+	}
+
+	walked := cid.NewSet()
+	cids, err := recurseLinks(cs.bs, walked, root, []cid.Cid{root})
+	if err != nil {
+		return err
+	}
+
+	for _, c := range cids {
+		if c.Prefix().Codec != cid.DagCBOR {
+			continue
+		}
+
+		blk, err := cs.bs.Get(c)
+		if err != nil {
+			return xerrors.Errorf("failed to get block %v: %w", c, err)
+		}
+
+		if err := carutil.LdWrite(w, c.Bytes(), blk.RawData()); err != nil {
+			return xerrors.Errorf("failed to write block to car output: %w", err)
+		}
+	}
+	return nil
+}
+
 func (cs *ChainStore) Import(r io.Reader) (*types.TipSet, error) {
 	header, err := car.LoadCar(cs.Blockstore(), r)
 	if err != nil {
