@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
+	exchange2 "github.com/ipfs/go-ipfs-exchange-interface"
 	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -101,13 +102,16 @@ func FallbackChainBlockstore(rbs dtypes.ChainRawBlockstore) dtypes.ChainBlocksto
 	}
 }
 
-func SetupFallbackBlockstore(cbs dtypes.ChainBlockstore, rem dtypes.ChainBitswap) error {
+func SetupFallbackBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, cbs dtypes.ChainBlockstore, rem dtypes.ChainBitswap) error {
 	fbs, ok := cbs.(*blockstore.FallbackStore)
 	if !ok {
 		return xerrors.Errorf("expected a FallbackStore")
 	}
 
-	fbs.SetFallback(rem.GetBlock)
+	se := rem.(exchange2.SessionExchange)
+	ses := se.NewSession(helpers.LifecycleCtx(mctx, lc))
+
+	fbs.SetFallback(ses.GetBlock)
 	return nil
 }
 

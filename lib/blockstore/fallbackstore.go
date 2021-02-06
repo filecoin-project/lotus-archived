@@ -2,6 +2,7 @@ package blockstore
 
 import (
 	"context"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 
@@ -30,7 +31,8 @@ func (fbs *FallbackStore) SetFallback(fg func(context.Context, cid.Cid) (blocks.
 }
 
 func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
-	log.Errorw("fallbackstore: Block not found locally, fetching from the network", "cid", c)
+	//log.Errorw("fallbackstore: Block not found locally, fetching from the network", "cid", c)
+	log.Desugar().WithOptions(zap.AddStacktrace(zap.ErrorLevel)).Error("fallbackstore: Block not found locally, fetching from the network", zap.Any("cid", c))
 	fbs.lk.RLock()
 	defer fbs.lk.RUnlock()
 

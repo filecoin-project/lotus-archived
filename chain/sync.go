@@ -786,6 +786,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 	}
 
 	stateRootCheck := async.Err(func() error {
+		if os.Getenv("LOTUS_LITE") == "1" {
+			return nil
+		}
+
 		stateroot, precp, err := syncer.sm.TipSetState(ctx, baseTs)
 		if err != nil {
 			return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
@@ -1050,9 +1054,15 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 	nonces := make(map[address.Address]uint64)
 
-	stateroot, _, err := syncer.sm.TipSetState(ctx, baseTs)
-	if err != nil {
-		return err
+	var stateroot cid.Cid
+	if os.Getenv("LOTUS_LITE") == "1" {
+		stateroot = b.Header.ParentStateRoot
+	} else {
+		var err error
+		stateroot, _, err = syncer.sm.TipSetState(ctx, baseTs)
+		if err != nil {
+			return err
+		}
 	}
 
 	st, err := state.LoadStateTree(syncer.store.Store(ctx), stateroot)
