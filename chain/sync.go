@@ -1088,25 +1088,27 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 			return xerrors.Errorf("block gas limit exceeded")
 		}
 
-		// Phase 2: (Partial) semantic validation:
-		// the sender exists and is an account actor, and the nonces make sense
-		if _, ok := nonces[m.From]; !ok {
-			// `GetActor` does not validate that this is an account actor.
-			act, err := st.GetActor(m.From)
-			if err != nil {
-				return xerrors.Errorf("failed to get actor: %w", err)
+		if os.Getenv("LOTUS_LITE") != "1" {
+			// Phase 2: (Partial) semantic validation:
+			// the sender exists and is an account actor, and the nonces make sense
+			if _, ok := nonces[m.From]; !ok {
+				// `GetActor` does not validate that this is an account actor.
+				act, err := st.GetActor(m.From)
+				if err != nil {
+					return xerrors.Errorf("failed to get actor: %w", err)
+				}
+
+				if !builtin.IsAccountActor(act.Code) {
+					return xerrors.New("Sender must be an account actor")
+				}
+				nonces[m.From] = act.Nonce
 			}
 
-			if !builtin.IsAccountActor(act.Code) {
-				return xerrors.New("Sender must be an account actor")
+			if nonces[m.From] != m.Nonce {
+				return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[m.From], m.Nonce)
 			}
-			nonces[m.From] = act.Nonce
+			nonces[m.From]++
 		}
-
-		if nonces[m.From] != m.Nonce {
-			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[m.From], m.Nonce)
-		}
-		nonces[m.From]++
 
 		return nil
 	}

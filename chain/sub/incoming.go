@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -514,6 +515,10 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "decode"))
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return pubsub.ValidationReject
+	}
+
+	if os.Getenv("LOTUS_LITE") == "1" {
+		return pubsub.ValidationAccept // todo: maybe not best, but we don't care about mpool too much in lite mode
 	}
 
 	if err := mv.mpool.Add(m); err != nil {
