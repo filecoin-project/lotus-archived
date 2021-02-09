@@ -950,7 +950,7 @@ func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 }
 
 func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
-	m, err := cs.GetMessage(c)
+	m, err := cs.GetMessage(cs.bs, c)
 	if err == nil {
 		return m, nil
 	}
@@ -958,12 +958,12 @@ func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
 		log.Warnf("GetCMessage: unexpected error getting unsigned message: %s", err)
 	}
 
-	return cs.GetSignedMessage(c)
+	return cs.GetSignedMessage(cs.bs, c)
 }
 
-func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
+func (cs *ChainStore) GetMessage(bs bstore.Blockstore, c cid.Cid) (*types.Message, error) {
 	if cs.localviewer == nil {
-		sb, err := cs.localbs.Get(c)
+		sb, err := bs.Get(c)
 		if err != nil {
 			log.Errorf("get message get failed: %s: %s", c, err)
 			return nil, err
@@ -979,9 +979,9 @@ func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
 	return msg, err
 }
 
-func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
+func (cs *ChainStore) GetSignedMessage(bs bstore.Blockstore, c cid.Cid) (*types.SignedMessage, error) {
 	if cs.localviewer == nil {
-		sb, err := cs.localbs.Get(c)
+		sb, err := bs.Get(c)
 		if err != nil {
 			log.Errorf("get message get failed: %s: %s", c, err)
 			return nil, err
@@ -1052,7 +1052,7 @@ func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, err
 	var out []BlockMessages
 	for _, b := range ts.Blocks() {
 
-		bms, sms, err := cs.MessagesForBlock(b)
+		bms, sms, err := cs.MessagesForBlock(false, b)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
 		}
@@ -1172,23 +1172,31 @@ func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to type
 	return path, nil
 }
 
-func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+func (cs *ChainStore) messagesForBlock(bs bstore.Blockstore, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	blscids, secpkcids, err := cs.ReadMsgMetaCids(b.Messages)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	blsmsgs, err := cs.LoadMessagesFromCids(blscids)
+	blsmsgs, err := cs.loadMessagesFromCids(bs, blscids)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("loading bls messages for block: %w", err)
 	}
 
-	secpkmsgs, err := cs.LoadSignedMessagesFromCids(secpkcids)
+	secpkmsgs, err := cs.loadSignedMessagesFromCids(bs, secpkcids)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("loading secpk messages for block: %w", err)
 	}
 
 	return blsmsgs, secpkmsgs, nil
+}
+
+func (cs *ChainStore) MessagesForBlock(local bool, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+	if local {
+		return cs.messagesForBlock(cs.localbs, b)
+	}
+
+	return cs.messagesForBlock(cs.bs, b)
 }
 
 func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
@@ -1209,10 +1217,10 @@ func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.Mess
 	return &r, nil
 }
 
-func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, error) {
+func (cs *ChainStore) loadMessagesFromCids(bs bstore.Blockstore, cids []cid.Cid) ([]*types.Message, error) {
 	msgs := make([]*types.Message, 0, len(cids))
 	for i, c := range cids {
-		m, err := cs.GetMessage(c)
+		m, err := cs.GetMessage(bs, c)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
 		}
@@ -1223,10 +1231,10 @@ func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, er
 	return msgs, nil
 }
 
-func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
+func (cs *ChainStore) loadSignedMessagesFromCids(bs bstore.Blockstore, cids []cid.Cid) ([]*types.SignedMessage, error) {
 	msgs := make([]*types.SignedMessage, 0, len(cids))
 	for i, c := range cids {
-		m, err := cs.GetSignedMessage(c)
+		m, err := cs.GetSignedMessage(bs, c)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
 		}
@@ -1235,6 +1243,14 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	}
 
 	return msgs, nil
+}
+
+func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, error) {
+	return cs.loadMessagesFromCids(cs.bs, cids)
+}
+
+func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
+	return cs.loadSignedMessagesFromCids(cs.bs, cids)
 }
 
 func (cs *ChainStore) Blockstore() bstore.Blockstore {
@@ -1257,7 +1273,7 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	var out []*types.FullBlock
 
 	for _, b := range ts.Blocks() {
-		bmsgs, smsgs, err := cs.MessagesForBlock(b)
+		bmsgs, smsgs, err := cs.MessagesForBlock(true, b)
 		if err != nil {
 			// TODO: check for 'not found' errors, and only return nil if this
 			// is actually a 'not found' error

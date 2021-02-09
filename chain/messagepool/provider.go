@@ -77,7 +77,7 @@ func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Addr
 }
 
 func (mpp *mpoolProvider) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
-	return mpp.sm.ChainStore().MessagesForBlock(h)
+	return mpp.sm.ChainStore().MessagesForBlock(false, h)
 }
 
 func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {

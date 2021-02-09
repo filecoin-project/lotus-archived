@@ -1054,9 +1054,9 @@ var chainExportCmd = &cli.Command{
 		}
 
 		rsrs := abi.ChainEpoch(cctx.Int64("recent-stateroots"))
-		if cctx.IsSet("recent-stateroots") && rsrs < build.Finality {
+		/*if cctx.IsSet("recent-stateroots") && rsrs < build.Finality {
 			return fmt.Errorf("\"recent-stateroots\" has to be greater than %d", build.Finality)
-		}
+		}*/
 
 		fi, err := os.Create(cctx.Args().First())
 		if err != nil {
@@ -1076,9 +1076,9 @@ var chainExportCmd = &cli.Command{
 
 		skipold := cctx.Bool("skip-old-msgs")
 
-		if rsrs == 0 && skipold {
+		/*if rsrs == 0 && skipold {
 			return fmt.Errorf("must pass recent stateroots along with skip-old-msgs")
-		}
+		}*/
 
 		stream, err := api.ChainExport(ctx, rsrs, skipold, ts.Key())
 		if err != nil {

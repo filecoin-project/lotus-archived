@@ -519,7 +519,7 @@ func (syncer *Syncer) tryLoadFullTipSet(tsk types.TipSetKey) (*store.FullTipSet,
 
 	fts := &store.FullTipSet{}
 	for _, b := range ts.Blocks() {
-		bmsgs, smsgs, err := syncer.store.MessagesForBlock(b)
+		bmsgs, smsgs, err := syncer.store.MessagesForBlock(true, b)
 		if err != nil {
 			return nil, err
 		}
@@ -765,6 +765,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 	})
 
 	baseFeeCheck := async.Err(func() error {
+		if os.Getenv("LOTUS_LITE") == "1" {
+			return nil
+		}
+
 		baseFee, err := syncer.store.ComputeBaseFee(ctx, baseTs)
 		if err != nil {
 			return xerrors.Errorf("computing base fee: %w", err)

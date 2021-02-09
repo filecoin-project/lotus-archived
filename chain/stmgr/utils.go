@@ -403,8 +403,11 @@ func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.
 
 	// more null blocks than our lookback
 	if lbr >= ts.Height() {
-		// This should never happen at this point, but may happen before
-		// network version 3 (where the lookback was only 10 blocks).
+		// This can happen when we're catching up with the chain
+		if os.Getenv("LOTUS_LITE") == "1" {
+			return nil, cid.Undef, xerrors.Errorf("not computing state in lite mode for lbts")
+		}
+
 		st, _, err := sm.TipSetState(ctx, ts)
 		if err != nil {
 			return nil, cid.Undef, err

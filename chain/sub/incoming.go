@@ -294,30 +294,32 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 		return pubsub.ValidationReject
 	}
 
-	// we want to ensure that it is a block from a known miner; we reject blocks from unknown miners
-	// to prevent spam attacks.
-	// the logic works as follows: we lookup the miner in the chain for its key.
-	// if we can find it then it's a known miner and we can validate the signature.
-	// if we can't find it, we check whether we are (near) synced in the chain.
-	// if we are not synced we cannot validate the block and we must ignore it.
-	// if we are synced and the miner is unknown, then the block is rejcected.
-	key, err := bv.checkPowerAndGetWorkerKey(ctx, blk.Header)
-	if err != nil {
-		if err != ErrSoftFailure && bv.isChainNearSynced() {
-			log.Warnf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
-			recordFailureFlagPeer("unknown_miner")
-			return pubsub.ValidationReject
+	if os.Getenv("LOTUS_LITE") != "1" {
+		// we want to ensure that it is a block from a known miner; we reject blocks from unknown miners
+		// to prevent spam attacks.
+		// the logic works as follows: we lookup the miner in the chain for its key.
+		// if we can find it then it's a known miner and we can validate the signature.
+		// if we can't find it, we check whether we are (near) synced in the chain.
+		// if we are not synced we cannot validate the block and we must ignore it.
+		// if we are synced and the miner is unknown, then the block is rejcected.
+		key, err := bv.checkPowerAndGetWorkerKey(ctx, blk.Header)
+		if err != nil {
+			if err != ErrSoftFailure && bv.isChainNearSynced() {
+				log.Warnf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
+				recordFailureFlagPeer("unknown_miner")
+				return pubsub.ValidationReject
+			}
+
+			log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain")
+			return pubsub.ValidationIgnore
 		}
 
-		log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain")
-		return pubsub.ValidationIgnore
-	}
-
-	err = sigs.CheckBlockSignature(ctx, blk.Header, key)
-	if err != nil {
-		log.Errorf("block signature verification failed: %s", err)
-		recordFailureFlagPeer("signature_verification_failed")
-		return pubsub.ValidationReject
+		err = sigs.CheckBlockSignature(ctx, blk.Header, key)
+		if err != nil {
+			log.Errorf("block signature verification failed: %s", err)
+			recordFailureFlagPeer("signature_verification_failed")
+			return pubsub.ValidationReject
+		}
 	}
 
 	if blk.Header.ElectionProof.WinCount < 1 {
