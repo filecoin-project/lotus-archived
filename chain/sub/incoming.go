@@ -2,8 +2,11 @@ package sub
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"sync"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -496,10 +499,23 @@ func (brc *blockReceiptCache) add(bcid cid.Cid) int {
 type MessageValidator struct {
 	self  peer.ID
 	mpool *messagepool.MessagePool
+
+	statsLk  sync.Mutex
+	seenMsgs map[cid.Cid]int
 }
 
 func NewMessageValidator(self peer.ID, mp *messagepool.MessagePool) *MessageValidator {
-	return &MessageValidator{self: self, mpool: mp}
+	mv := &MessageValidator{self: self, mpool: mp, seenMsgs: make(map[cid.Cid]int)}
+
+	mux := &http.ServeMux{}
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		mv.statsLk.Lock()
+		defer mv.statsLk.Unlock()
+		json.NewEncoder(w).Encode(mv.seenMsgs)
+	})
+	go http.ListenAndServe(":19523", mux)
+
+	return mv
 }
 
 func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
@@ -508,12 +524,24 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 	}
 
 	stats.Record(ctx, metrics.MessageReceived.M(1))
+	stats.Record(ctx, metrics.MessageReceivedBytes.M(int64(len(msg.Message.GetData()))))
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
 		log.Warnf("failed to decode incoming message: %s", err)
 		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "decode"))
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return pubsub.ValidationReject
+	}
+
+	mv.statsLk.Lock()
+	mc := m.Cid()
+	_, dup := mv.seenMsgs[mc]
+	mv.seenMsgs[mc]++
+	mv.statsLk.Unlock()
+
+	if dup {
+		stats.Record(ctx, metrics.MessageValidationDuplicate.M(1))
+		stats.Record(ctx, metrics.MessageValidationDuplicateBytes.M(int64(len(msg.Message.GetData()))))
 	}
 
 	if err := mv.mpool.Add(m); err != nil {
