@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -17,7 +19,7 @@ func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1, abi.RegisteredSealProof_StackedDrg8MiBV1)
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 }
 
@@ -27,6 +29,34 @@ func TestAPI(t *testing.T) {
 
 func TestAPIRPC(t *testing.T) {
 	test.TestApis(t, builder.RPCBuilder)
+}
+
+func Test8MBAPIDealFlow(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
+	blockTime := 10 * time.Millisecond
+
+	// For these tests where the block time is artificially short, just use
+	// a deal start epoch that is guaranteed to be far enough in the future
+	// so that the deal starts sealing in time
+	dealStartEpoch := abi.ChainEpoch(2 << 12)
+
+	t.Run("TestDuplicateRetrievalDealFlow", func(t *testing.T) {
+		sbBuilderOpts := func(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
+			return builder.MockSbBuilderOpts(t, builder.BuilderOpts{
+				FullOpts:    fullOpts,
+				StorageOpts: storage,
+				RPC:         false,
+				SealProof:   abi.RegisteredSealProof_StackedDrg8MiBV1,
+				NetOptions:  &mocknet.LinkOptions{Bandwidth: 1024 * 1024},
+			})
+		}
+		test.TestDuplicateRetrievalDealFlow(t, sbBuilderOpts, blockTime, dealStartEpoch)
+	})
 }
 
 func TestAPIDealFlow(t *testing.T) {

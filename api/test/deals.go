@@ -8,8 +8,11 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
@@ -49,7 +52,7 @@ func TestDoubleDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, sta
 }
 
 func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode, miner TestStorageNode, carExport, fastRet bool, startEpoch abi.ChainEpoch) {
-	res, data, err := CreateClientFile(ctx, client, rseed)
+	res, data, err := CreateClientFile(ctx, client, 1600, rseed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,8 +73,8 @@ func MakeDeal(t *testing.T, ctx context.Context, rseed int, client api.FullNode,
 	testRetrieval(t, ctx, client, fcid, &info.PieceCID, carExport, data)
 }
 
-func CreateClientFile(ctx context.Context, client api.FullNode, rseed int) (*api.ImportRes, []byte, error) {
-	data := make([]byte, 1600)
+func CreateClientFile(ctx context.Context, client api.FullNode, size int, rseed int) (*api.ImportRes, []byte, error) {
+	data := make([]byte, size)
 	rand.New(rand.NewSource(int64(rseed))).Read(data)
 
 	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
@@ -117,7 +120,7 @@ func TestPublishDealsBatching(t *testing.T, b APIBuilder, blocktime time.Duratio
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {
-		res, _, err := CreateClientFile(s.ctx, s.client, rseed)
+		res, _, err := CreateClientFile(s.ctx, s.client, 1600, rseed)
 		require.NoError(t, err)
 
 		upds, err := client.ClientGetDealUpdates(s.ctx)
@@ -269,6 +272,41 @@ func TestZeroPricePerByteRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime
 	MakeDeal(t, s.ctx, 6, s.client, s.miner, false, false, startEpoch)
 }
 
+func TestDuplicateRetrievalDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
+	s := setupOneClientOneMiner(t, b, blocktime)
+	defer s.blockMiner.Stop()
+
+	res, data, err := CreateClientFile(s.ctx, s.client, 5000000, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fcid := res.Root
+	fmt.Println("FILE CID: ", fcid)
+
+	deal := startDeal(t, s.ctx, s.miner, s.client, fcid, false, startEpoch)
+
+	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
+	time.Sleep(time.Second)
+	waitDealSealed(t, s.ctx, s.miner, s.client, deal, false)
+
+	// Retrieval
+	info, err := s.client.ClientGetDealInfo(s.ctx, *deal)
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		testRetrieval(t, s.ctx, s.client, fcid, &info.PieceCID, false, data)
+		wg.Done()
+	}()
+	go func() {
+		testRetrieval(t, s.ctx, s.client, fcid, &info.PieceCID, false, data)
+		wg.Done()
+	}()
+	wg.Wait()
+}
+
 func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client api.FullNode, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
@@ -286,7 +324,7 @@ func startDeal(t *testing.T, ctx context.Context, miner TestStorageNode, client 
 		},
 		Wallet:            addr,
 		Miner:             maddr,
-		EpochPrice:        types.NewInt(1000000),
+		EpochPrice:        types.NewInt(5000000),
 		DealStartEpoch:    startEpoch,
 		MinBlocksDuration: uint64(build.MinDealDuration),
 		FastRetrieval:     fastRet,
@@ -400,6 +438,7 @@ func testRetrieval(t *testing.T, ctx context.Context, client api.FullNode, fcid 
 		t.Fatal(err)
 	}
 	for update := range updates {
+		fmt.Println("  >> ", retrievalmarket.ClientEvents[update.Event], update.BytesReceived)
 		if update.Err != "" {
 			t.Fatalf("retrieval failed: %s", update.Err)
 		}

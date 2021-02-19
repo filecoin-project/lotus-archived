@@ -156,7 +156,7 @@ func Builder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageM
 }
 
 func MockSbBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
-	return mockSbBuilderOpts(t, fullOpts, storage, false)
+	return defaultSbBuilderOpts(t, fullOpts, storage, false)
 }
 
 func RPCBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
@@ -164,7 +164,7 @@ func RPCBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.Stora
 }
 
 func RPCMockSbBuilder(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
-	return mockSbBuilderOpts(t, fullOpts, storage, true)
+	return defaultSbBuilderOpts(t, fullOpts, storage, true)
 }
 
 func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, rpc bool) ([]test.TestNode, []test.TestStorageNode) {
@@ -329,14 +329,34 @@ func mockBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.
 	return fulls, storers
 }
 
-func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, rpc bool) ([]test.TestNode, []test.TestStorageNode) {
+type BuilderOpts struct {
+	FullOpts    []test.FullNodeOpts
+	StorageOpts []test.StorageMiner
+	RPC         bool
+	SealProof   abi.RegisteredSealProof
+	NetOptions  *mocknet.LinkOptions
+}
+
+func defaultSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner, rpc bool) ([]test.TestNode, []test.TestStorageNode) {
+	return MockSbBuilderOpts(t, BuilderOpts{
+		FullOpts:    fullOpts,
+		StorageOpts: storage,
+		RPC:         rpc,
+		SealProof:   abi.RegisteredSealProof_StackedDrg2KiBV1,
+	})
+}
+
+func MockSbBuilderOpts(t *testing.T, opts BuilderOpts) ([]test.TestNode, []test.TestStorageNode) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
 	mn := mocknet.New(ctx)
+	if opts.NetOptions != nil {
+		mn.SetLinkDefaults(*opts.NetOptions)
+	}
 
-	fulls := make([]test.TestNode, len(fullOpts))
-	storers := make([]test.TestStorageNode, len(storage))
+	fulls := make([]test.TestNode, len(opts.FullOpts))
+	storers := make([]test.TestStorageNode, len(opts.StorageOpts))
 
 	var genbuf bytes.Buffer
 
@@ -348,18 +368,18 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 	var maddrs []address.Address
 	var keys []*wallet.Key
 	var pidKeys []crypto.PrivKey
-	for i := 0; i < len(storage); i++ {
+	for i := 0; i < len(opts.StorageOpts); i++ {
 		maddr, err := address.NewIDAddress(genesis2.MinerStart + uint64(i))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		preseals := storage[i].Preseal
+		preseals := opts.StorageOpts[i].Preseal
 		if preseals == test.PresealGenesis {
 			preseals = test.GenesisPreseals
 		}
 
-		genm, k, err := mockstorage.PreSeal(abi.RegisteredSealProof_StackedDrg2KiBV1, maddr, preseals)
+		genm, k, err := mockstorage.PreSeal(opts.SealProof, maddr, preseals)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -399,7 +419,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 
 	// END PRESEAL SECTION
 
-	for i := 0; i < len(fullOpts); i++ {
+	for i := 0; i < len(opts.FullOpts); i++ {
 		var genesis node.Option
 		if i == 0 {
 			genesis = node.Override(new(modules.Genesis), testing2.MakeGenesisMem(&genbuf, *templ))
@@ -408,7 +428,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 		}
 
 		stop, err := node.New(ctx,
-			node.FullAPI(&fulls[i].FullNode, node.Lite(fullOpts[i].Lite)),
+			node.FullAPI(&fulls[i].FullNode, node.Lite(opts.FullOpts[i].Lite)),
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),
 			node.MockHost(mn),
@@ -421,7 +441,7 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 
 			genesis,
 
-			fullOpts[i].Opts(fulls),
+			opts.FullOpts[i].Opts(fulls),
 		)
 		if err != nil {
 			t.Fatalf("%+v", err)
@@ -429,12 +449,12 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 
 		t.Cleanup(func() { _ = stop(context.Background()) })
 
-		if rpc {
+		if opts.RPC {
 			fulls[i] = fullRpc(t, fulls[i])
 		}
 	}
 
-	for i, def := range storage {
+	for i, def := range opts.StorageOpts {
 		// TODO: support non-bootstrap miners
 
 		minerID := abi.ActorID(genesis2.MinerStart + uint64(i))
@@ -459,9 +479,9 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			}
 		}
 
-		opts := def.Opts
-		if opts == nil {
-			opts = node.Options()
+		nodeOpts := def.Opts
+		if nodeOpts == nil {
+			nodeOpts = node.Options()
 		}
 		storers[i] = CreateTestStorageNode(ctx, t, genms[i].Worker, maddrs[i], pidKeys[i], f, mn, node.Options(
 			node.Override(new(sectorstorage.SectorManager), func() (sectorstorage.SectorManager, error) {
@@ -469,10 +489,10 @@ func mockSbBuilderOpts(t *testing.T, fullOpts []test.FullNodeOpts, storage []tes
 			}),
 			node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
 			node.Unset(new(*sectorstorage.Manager)),
-			opts,
+			nodeOpts,
 		))
 
-		if rpc {
+		if opts.RPC {
 			storers[i] = storerRpc(t, storers[i])
 		}
 	}
