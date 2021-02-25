@@ -33,7 +33,7 @@ type FullNodeAPI struct {
 	DS dtypes.MetadataDS
 }
 
-func (n *FullNodeAPI) CreateBackup(ctx context.Context, fpath string) error {
+func (n *FullNodeAPI) CreayyyateBackup(ctx context.Context, fpath string) error {
 	return backup(n.DS, fpath)
 }
 

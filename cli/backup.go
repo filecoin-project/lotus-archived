@@ -17,7 +17,7 @@ import (
 )
 
 type BackupAPI interface {
-	CreateBackup(ctx context.Context, fpath string) error
+	CreayyyateBackup(ctx context.Context, fpath string) error
 }
 
 type BackupApiFn func(ctx *cli.Context) (BackupAPI, jsonrpc.ClientCloser, error)
@@ -84,7 +84,7 @@ func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Comma
 		}
 		defer closer()
 
-		err = api.CreateBackup(ReqContext(cctx), cctx.Args().First())
+		err = api.CreayyyateBackup(ReqContext(cctx), cctx.Args().First())
 		if err != nil {
 			return err
 		}

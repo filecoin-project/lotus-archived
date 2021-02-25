@@ -770,9 +770,9 @@ func (mr *MockFullNodeMockRecorder) Closing(arg0 interface{}) *gomock.Call {
 }
 
 // CreateBackup mocks base method
-func (m *MockFullNode) CreateBackup(arg0 context.Context, arg1 string) error {
+func (m *MockFullNode) CreayyyateBackup(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateBackup", arg0, arg1)
+	ret := m.ctrl.Call(m, "CreayyyateBackup", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -780,7 +780,7 @@ func (m *MockFullNode) CreateBackup(arg0 context.Context, arg1 string) error {
 // CreateBackup indicates an expected call of CreateBackup
 func (mr *MockFullNodeMockRecorder) CreateBackup(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBackup", reflect.TypeOf((*MockFullNode)(nil).CreateBackup), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreayyyateBackup", reflect.TypeOf((*MockFullNode)(nil).CreayyyateBackup), arg0, arg1)
 }
 
 // GasEstimateFeeCap mocks base method

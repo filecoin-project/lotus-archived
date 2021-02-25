@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	v0 "github.com/filecoin-project/lotus/api/v0"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -38,15 +39,23 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
 	}
-	rpcServer := jsonrpc.NewServer(serverOptions...)
-	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a)))
 
-	ah := &auth.Handler{
-		Verify: a.AuthVerify,
-		Next:   rpcServer.ServeHTTP,
+	serveRpc := func(path string, hnd interface{}) {
+		rpcServer := jsonrpc.NewServer(serverOptions...)
+		rpcServer.Register("Filecoin", hnd)
+
+		ah := &auth.Handler{
+			Verify: a.AuthVerify,
+			Next:   rpcServer.ServeHTTP,
+		}
+
+		http.Handle(path, ah)
 	}
 
-	http.Handle("/rpc/v0", ah)
+	pma := apistruct.PermissionedFullAPI(metrics.MetricedFullAPI(a))
+
+	serveRpc("/rpc/v1", pma)
+	serveRpc("/rpc/v0", &v0.WrapperV1{Common: pma, Internal: pma})
 
 	importAH := &auth.Handler{
 		Verify: a.AuthVerify,
