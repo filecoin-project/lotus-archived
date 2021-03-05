@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/cli/util"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -12,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -49,7 +50,7 @@ const FlagWorkerRepo = "worker-repo"
 const FlagWorkerRepoDeprecation = "workerrepo"
 
 func main() {
-	build.RunningNodeType = build.NodeWorker
+	api.RunningNodeType = api.NodeWorker
 
 	lotuslog.SetupLogLevels()
 
@@ -210,8 +211,8 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		if v.APIVersion != build.MinerAPIVersion {
-			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.Version{APIVersion: build.MinerAPIVersion})
+		if v.APIVersion != api.MinerAPIVersion {
+			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.MinerAPIVersion})
 		}
 		log.Infof("Remote version %s", v)
 

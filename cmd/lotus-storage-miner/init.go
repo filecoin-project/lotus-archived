@@ -7,11 +7,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/cli/util"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
@@ -187,8 +188,8 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if !v.APIVersion.EqMajorMinor(build.FullAPIVersion) {
-			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", build.FullAPIVersion, v.APIVersion)
+		if !v.APIVersion.EqMajorMinor(lapi.FullAPIVersion) {
+			return xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", lapi.FullAPIVersion, v.APIVersion)
 		}
 
 		log.Info("Initializing repo")
