@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/processor"
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/scheduler"
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/syncer"
@@ -58,13 +58,13 @@ var runCmd = &cli.Command{
 				return err
 			}
 		} else {
-			api, closer, err = lcli.GetFullNodeAPI(cctx)
+			api, closer, err = cliutil.GetFullNodeAPI(cctx)
 			if err != nil {
 				return err
 			}
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		v, err := api.Version(ctx)
 		if err != nil {

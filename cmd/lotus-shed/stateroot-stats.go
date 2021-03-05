@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"sort"
 
 	"github.com/multiformats/go-multihash"
@@ -43,13 +44,13 @@ var staterootDiffsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ts, err := lcli.LoadTipSet(ctx, cctx, api)
 		if err != nil {
@@ -121,13 +122,13 @@ var staterootStatCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ts, err := lcli.LoadTipSet(ctx, cctx, api)
 		if err != nil {

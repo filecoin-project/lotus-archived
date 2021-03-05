@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"math/rand"
 	"os"
 	"time"
@@ -11,8 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -55,12 +54,12 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		rate := cctx.Int("rate")
 		if rate <= 0 {

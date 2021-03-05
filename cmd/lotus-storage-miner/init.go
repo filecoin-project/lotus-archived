@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -139,7 +140,7 @@ var initCmd = &cli.Command{
 			log.Info("will attempt to symlink to imported sectors")
 		}
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		log.Info("Checking proof parameters")
 
@@ -149,7 +150,7 @@ var initCmd = &cli.Command{
 
 		log.Info("Trying to connect to full node RPC")
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx) // TODO: consider storing full node address in config
+		api, closer, err := cliutil.GetFullNodeAPI(cctx) // TODO: consider storing full node address in config
 		if err != nil {
 			return err
 		}

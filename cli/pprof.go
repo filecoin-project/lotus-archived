@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/filecoin-project/lotus/cli/util"
 	"io"
 	"net/http"
 	"os"
@@ -32,7 +33,7 @@ var PprofGoroutines = &cli.Command{
 		if !ok {
 			log.Errorf("repoType type does not match the type of repo.RepoType")
 		}
-		ainfo, err := GetAPIInfo(cctx, t)
+		ainfo, err := cliutil.GetAPIInfo(cctx, t)
 		if err != nil {
 			return xerrors.Errorf("could not get API info: %w", err)
 		}

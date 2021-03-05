@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/cli/util"
 	"net"
 	"net/http"
 	"os"
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -88,7 +88,7 @@ var runCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus wallet")
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
@@ -153,7 +153,7 @@ var runCmd = &cli.Command{
 
 			if !cctx.Bool("offline") {
 				ag = func() (api.FullNode, jsonrpc.ClientCloser, error) {
-					return lcli.GetFullNodeAPI(cctx)
+					return cliutil.GetFullNodeAPI(cctx)
 				}
 			}
 

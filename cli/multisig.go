@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"reflect"
 	"sort"
 	"strconv"
@@ -95,12 +96,12 @@ var msigCreateCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("multisigs must have at least one signer"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var addrs []address.Address
 		for _, a := range cctx.Args().Slice() {
@@ -195,12 +196,12 @@ var msigInspectCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must specify address of multisig to inspect"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
 
@@ -364,12 +365,12 @@ var msigProposeCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must either pass three or five arguments"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -481,12 +482,12 @@ var msigApproveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -598,12 +599,12 @@ var msigRemoveProposeCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and signer address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -676,12 +677,12 @@ var msigAddProposeCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and signer address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -743,12 +744,12 @@ var msigAddApproveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, transaction id, new signer address, whether to increase threshold"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -825,12 +826,12 @@ var msigAddCancelCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, transaction id, new signer address, whether to increase threshold"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -902,12 +903,12 @@ var msigSwapProposeCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, old signer address, new signer address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -974,12 +975,12 @@ var msigSwapApproveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, transaction id, old signer address, new signer address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -1056,12 +1057,12 @@ var msigSwapCancelCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, transaction id, old signer address, new signer address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -1133,12 +1134,12 @@ var msigLockProposeCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, start epoch, unlock duration, and amount"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -1220,12 +1221,12 @@ var msigLockApproveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, tx id, start epoch, unlock duration, and amount"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -1317,12 +1318,12 @@ var msigLockCancelCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, tx id, start epoch, unlock duration, and amount"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -1415,12 +1416,12 @@ var msigVestedCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -1471,12 +1472,12 @@ var msigProposeThresholdCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and new threshold value"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {

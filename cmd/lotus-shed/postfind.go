@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -36,12 +37,12 @@ var postFindCmd = &cli.Command{
 		},
 	},
 	Action: func(c *cli.Context) error {
-		api, acloser, err := lcli.GetFullNodeAPI(c)
+		api, acloser, err := cliutil.GetFullNodeAPI(c)
 		if err != nil {
 			return err
 		}
 		defer acloser()
-		ctx := lcli.ReqContext(c)
+		ctx := cliutil.ReqContext(c)
 		verbose := c.Bool("verbose")
 		withpower := c.Bool("withpower")
 

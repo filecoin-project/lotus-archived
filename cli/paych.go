@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io"
 	"sort"
 	"strings"
@@ -66,13 +67,13 @@ var paychAddFundsCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("parsing amount failed: %s", err))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		// Send a message to chain to create channel / add funds to existing
 		// channel
@@ -104,7 +105,7 @@ var paychStatusByFromToCmd = &cli.Command{
 		if cctx.Args().Len() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass two arguments: <from address> <to address>"))
 		}
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		from, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
@@ -116,7 +117,7 @@ var paychStatusByFromToCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("failed to parse to address: %s", err))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -140,14 +141,14 @@ var paychStatusCmd = &cli.Command{
 		if cctx.Args().Len() != 1 {
 			return ShowHelp(cctx, fmt.Errorf("must pass an argument: <channel address>"))
 		}
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
 			return ShowHelp(cctx, fmt.Errorf("failed to parse channel address: %s", err))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -222,13 +223,13 @@ var paychListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all locally registered payment channels",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		chs, err := api.PaychList(ctx)
 		if err != nil {
@@ -256,13 +257,13 @@ var paychSettleCmd = &cli.Command{
 			return fmt.Errorf("failed to parse payment channel address: %s", err)
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		mcid, err := api.PaychSettle(ctx, ch)
 		if err != nil {
@@ -296,13 +297,13 @@ var paychCloseCmd = &cli.Command{
 			return fmt.Errorf("failed to parse payment channel address: %s", err)
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		mcid, err := api.PaychCollect(ctx, ch)
 		if err != nil {
@@ -363,13 +364,13 @@ var paychVoucherCreateCmd = &cli.Command{
 
 		lane := cctx.Int("lane")
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		v, err := api.PaychVoucherCreate(ctx, ch, types.BigInt(amt), uint64(lane))
 		if err != nil {
@@ -409,13 +410,13 @@ var paychVoucherCheckCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if err := api.PaychVoucherCheckValid(ctx, ch, sv); err != nil {
 			return err
@@ -445,13 +446,13 @@ var paychVoucherAddCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		// TODO: allow passing proof bytes
 		if _, err := api.PaychVoucherAdd(ctx, ch, sv, nil, types.NewInt(0)); err != nil {
@@ -482,13 +483,13 @@ var paychVoucherListCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		vouchers, err := api.PaychVoucherList(ctx, ch)
 		if err != nil {
@@ -527,13 +528,13 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		vouchersByLane, err := paychmgr.BestSpendableByLane(ctx, api, ch)
 		if err != nil {
@@ -603,13 +604,13 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		mcid, err := api.PaychVoucherSubmit(ctx, ch, sv, nil, nil)
 		if err != nil {

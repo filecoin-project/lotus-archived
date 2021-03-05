@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/cli/util"
 	"strings"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 )
 
@@ -69,13 +69,13 @@ func taskAction(tf func(a api.WorkerAPI, ctx context.Context, tt sealtasks.TaskT
 			return xerrors.Errorf("unknown task type '%s'", cctx.Args().First())
 		}
 
-		api, closer, err := lcli.GetWorkerAPI(cctx)
+		api, closer, err := cliutil.GetWorkerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		return tf(api, ctx, tt)
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io"
 	"os"
 	"path/filepath"
@@ -72,18 +73,18 @@ var storageDealSelectionShowCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List storage deal proposal selection criteria",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		onlineOk, err := smapi.DealsConsiderOnlineStorageDeals(lcli.DaemonContext(cctx))
+		onlineOk, err := smapi.DealsConsiderOnlineStorageDeals(cliutil.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
 
-		offlineOk, err := smapi.DealsConsiderOfflineStorageDeals(lcli.DaemonContext(cctx))
+		offlineOk, err := smapi.DealsConsiderOfflineStorageDeals(cliutil.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
@@ -99,28 +100,28 @@ var storageDealSelectionResetCmd = &cli.Command{
 	Name:  "reset",
 	Usage: "Reset storage deal proposal selection criteria to default values",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		err = smapi.DealsSetConsiderOnlineStorageDeals(lcli.DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderOnlineStorageDeals(cliutil.DaemonContext(cctx), true)
 		if err != nil {
 			return err
 		}
 
-		err = smapi.DealsSetConsiderOfflineStorageDeals(lcli.DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderOfflineStorageDeals(cliutil.DaemonContext(cctx), true)
 		if err != nil {
 			return err
 		}
 
-		err = smapi.DealsSetConsiderVerifiedStorageDeals(lcli.DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderVerifiedStorageDeals(cliutil.DaemonContext(cctx), true)
 		if err != nil {
 			return err
 		}
 
-		err = smapi.DealsSetConsiderUnverifiedStorageDeals(lcli.DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderUnverifiedStorageDeals(cliutil.DaemonContext(cctx), true)
 		if err != nil {
 			return err
 		}
@@ -147,35 +148,35 @@ var storageDealSelectionRejectCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
 		if cctx.Bool("online") {
-			err = smapi.DealsSetConsiderOnlineStorageDeals(lcli.DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderOnlineStorageDeals(cliutil.DaemonContext(cctx), false)
 			if err != nil {
 				return err
 			}
 		}
 
 		if cctx.Bool("offline") {
-			err = smapi.DealsSetConsiderOfflineStorageDeals(lcli.DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderOfflineStorageDeals(cliutil.DaemonContext(cctx), false)
 			if err != nil {
 				return err
 			}
 		}
 
 		if cctx.Bool("verified") {
-			err = smapi.DealsSetConsiderVerifiedStorageDeals(lcli.DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderVerifiedStorageDeals(cliutil.DaemonContext(cctx), false)
 			if err != nil {
 				return err
 			}
 		}
 
 		if cctx.Bool("unverified") {
-			err = smapi.DealsSetConsiderUnverifiedStorageDeals(lcli.DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderUnverifiedStorageDeals(cliutil.DaemonContext(cctx), false)
 			if err != nil {
 				return err
 			}
@@ -212,9 +213,9 @@ var setAskCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		ctx := lcli.DaemonContext(cctx)
+		ctx := cliutil.DaemonContext(cctx)
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -280,15 +281,15 @@ var getAskCmd = &cli.Command{
 	Usage: "Print the miner's ask",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		ctx := lcli.DaemonContext(cctx)
+		ctx := cliutil.DaemonContext(cctx)
 
-		fnapi, closer, err := lcli.GetFullNodeAPI(cctx)
+		fnapi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -351,13 +352,13 @@ var dealsImportDataCmd = &cli.Command{
 	Usage:     "Manually import data for a deal",
 	ArgsUsage: "<proposal CID> <file>",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := lcli.DaemonContext(cctx)
+		ctx := cliutil.DaemonContext(cctx)
 
 		if cctx.Args().Len() < 2 {
 			return fmt.Errorf("must specify proposal CID and file path")
@@ -389,13 +390,13 @@ var dealsListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := lcli.DaemonContext(cctx)
+		ctx := cliutil.DaemonContext(cctx)
 
 		deals, err := api.MarketListIncompleteDeals(ctx)
 		if err != nil {
@@ -493,13 +494,13 @@ var getBlocklistCmd = &cli.Command{
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		blocklist, err := api.DealsPieceCidBlocklist(lcli.DaemonContext(cctx))
+		blocklist, err := api.DealsPieceCidBlocklist(cliutil.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
@@ -523,7 +524,7 @@ var setBlocklistCmd = &cli.Command{
 	ArgsUsage: "[<path-of-file-containing-newline-delimited-piece-CIDs> (optional, will read from stdin if omitted)]",
 	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -560,7 +561,7 @@ var setBlocklistCmd = &cli.Command{
 			return err
 		}
 
-		return api.DealsSetPieceCidBlocklist(lcli.DaemonContext(cctx), blocklist)
+		return api.DealsSetPieceCidBlocklist(cliutil.DaemonContext(cctx), blocklist)
 	},
 }
 
@@ -569,13 +570,13 @@ var resetBlocklistCmd = &cli.Command{
 	Usage: "Remove all entries from the miner's piece CID blocklist",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		return api.DealsSetPieceCidBlocklist(lcli.DaemonContext(cctx), []cid.Cid{})
+		return api.DealsSetPieceCidBlocklist(cliutil.DaemonContext(cctx), []cid.Cid{})
 	},
 }
 
@@ -584,12 +585,12 @@ var setSealDurationCmd = &cli.Command{
 	Usage:     "Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.",
 	ArgsUsage: "<minutes>",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 		if cctx.Args().Len() != 1 {
 			return xerrors.Errorf("must pass duration in minutes")
 		}
@@ -633,12 +634,12 @@ var marketRestartTransfer = &cli.Command{
 		if !cctx.Args().Present() {
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
 		}
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
 		if err != nil {
@@ -698,12 +699,12 @@ var marketCancelTransfer = &cli.Command{
 		if !cctx.Args().Present() {
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
 		}
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
 		if err != nil {
@@ -770,12 +771,12 @@ var transfersListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		channels, err := api.MarketListDataTransfers(ctx)
 		if err != nil {
@@ -838,12 +839,12 @@ var dealsPendingPublish = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if cctx.Bool("publish-now") {
 			if err := api.MarketPublishPendingDeals(ctx); err != nil {

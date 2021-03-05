@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	stdbig "math/big"
 	"sort"
 	"strconv"
@@ -59,13 +60,13 @@ var mpoolPending = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var toa, froma address.Address
 		if tos := cctx.String("to"); tos != "" {
@@ -146,7 +147,7 @@ var mpoolClear = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -160,7 +161,7 @@ var mpoolClear = &cli.Command{
 
 		local := cctx.Bool("local")
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 		return api.MpoolClear(ctx, local)
 	},
 }
@@ -169,13 +170,13 @@ var mpoolSub = &cli.Command{
 	Name:  "sub",
 	Usage: "Subscribe to mpool changes",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		sub, err := api.MpoolSub(ctx)
 		if err != nil {
@@ -212,13 +213,13 @@ var mpoolStat = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ts, err := api.ChainHead(ctx)
 		if err != nil {
@@ -384,13 +385,13 @@ var mpoolReplaceCmd = &cli.Command{
 	ArgsUsage: "<from nonce> | <message-cid>",
 	Action: func(cctx *cli.Context) error {
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var from address.Address
 		var nonce uint64
@@ -527,13 +528,13 @@ var mpoolFindCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		pending, err := api.MpoolPending(ctx, types.EmptyTSK)
 		if err != nil {
@@ -601,13 +602,13 @@ var mpoolConfig = &cli.Command{
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if cctx.Args().Len() == 0 {
 			cfg, err := api.MpoolGetConfig(ctx)
@@ -647,13 +648,13 @@ var mpoolGasPerfCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
 		if err != nil {

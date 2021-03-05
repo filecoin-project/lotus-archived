@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"sort"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 )
 
@@ -16,13 +16,13 @@ var infoCmd = &cli.Command{
 	Name:  "info",
 	Usage: "Print worker info",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetWorkerAPI(cctx)
+		api, closer, err := cliutil.GetWorkerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ver, err := api.Version(ctx)
 		if err != nil {

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -32,13 +33,13 @@ var authCreateAdminToken = &cli.Command{
 	},
 
 	Action: func(cctx *cli.Context) error {
-		napi, closer, err := GetAPI(cctx)
+		napi, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.IsSet("perm") {
 			return xerrors.New("--perm flag not set")
@@ -80,13 +81,13 @@ var authApiInfoToken = &cli.Command{
 	},
 
 	Action: func(cctx *cli.Context) error {
-		napi, closer, err := GetAPI(cctx)
+		napi, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.IsSet("perm") {
 			return xerrors.New("--perm flag not set")
@@ -120,14 +121,14 @@ var authApiInfoToken = &cli.Command{
 			log.Errorf("repoType type does not match the type of repo.RepoType")
 		}
 
-		ainfo, err := GetAPIInfo(cctx, t)
+		ainfo, err := cliutil.GetAPIInfo(cctx, t)
 		if err != nil {
 			return xerrors.Errorf("could not get API info: %w", err)
 		}
 
 		// TODO: Log in audit log when it is implemented
 
-		fmt.Printf("%s=%s:%s\n", envForRepo(t), string(token), ainfo.Addr)
+		fmt.Printf("%s=%s:%s\n", cliutil.EnvForRepo(t), string(token), ainfo.Addr)
 		return nil
 	},
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"os"
 	"strings"
 
@@ -25,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
@@ -55,19 +55,19 @@ var actorSetAddrsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeAPI, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var addrs []abi.Multiaddrs
 		for _, a := range cctx.Args().Slice() {
@@ -132,19 +132,19 @@ var actorSetPeeridCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeAPI, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		pid, err := peer.Decode(cctx.Args().Get(0))
 		if err != nil {
@@ -191,19 +191,19 @@ var actorWithdrawCmd = &cli.Command{
 	Usage:     "withdraw available balance",
 	ArgsUsage: "[amount (FIL)]",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
@@ -269,19 +269,19 @@ var actorRepayDebtCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
@@ -381,19 +381,19 @@ var actorControlList = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		color.NoColor = !cctx.Bool("color")
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
@@ -519,19 +519,19 @@ var actorControlSet = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
@@ -641,19 +641,19 @@ var actorSetOwnerCmd = &cli.Command{
 			return fmt.Errorf("must pass new owner address and sender address")
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		na, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
@@ -741,19 +741,19 @@ var actorProposeChangeWorker = &cli.Command{
 			return fmt.Errorf("must pass address of new worker address")
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		na, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
@@ -856,19 +856,19 @@ var actorConfirmChangeWorker = &cli.Command{
 			return fmt.Errorf("must pass address of new worker address")
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		na, err := address.NewFromString(cctx.Args().First())
 		if err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io"
 	"os"
 	"strconv"
@@ -80,13 +81,13 @@ var chainBalanceCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ts, err := lcli.LoadTipSet(ctx, cctx, api)
 		if err != nil {
@@ -545,13 +546,13 @@ var fillBalancesCmd = &cli.Command{
 	Description: "fill out balances for addresses on dates in given spreadsheet",
 	Flags:       []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		dates, addrs, err := parseCsv(cctx.Args().First())
 		if err != nil {

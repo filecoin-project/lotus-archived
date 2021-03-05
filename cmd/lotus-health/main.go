@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/lotus/cli/util"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,7 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 type CidWindow [][]cid.Cid
@@ -100,7 +100,7 @@ var watchHeadCmd = &cli.Command{
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(c)
+		ctx := cliutil.ReqContext(c)
 
 		go func() {
 			for {
@@ -250,7 +250,7 @@ func waitForSyncComplete(ctx context.Context, a api.FullNode, r int, t time.Dura
  */
 func getFullNodeAPI(ctx *cli.Context, r int, t time.Duration) (api.FullNode, jsonrpc.ClientCloser, error) {
 	for i := 0; i < r; i++ {
-		api, closer, err := lcli.GetFullNodeAPI(ctx)
+		api, closer, err := cliutil.GetFullNodeAPI(ctx)
 		if err != nil && i == (r-1) {
 			return nil, nil, err
 		}

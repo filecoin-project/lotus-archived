@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -81,13 +82,13 @@ var stateMinerInfo = &cli.Command{
 	Usage:     "Retrieve miner information",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify miner to get information for")
@@ -224,13 +225,13 @@ var statePowerCmd = &cli.Command{
 	Usage:     "Query network or miner power",
 	ArgsUsage: "[<minerAddress> (optional)]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var maddr address.Address
 		if cctx.Args().Present() {
@@ -268,13 +269,13 @@ var stateSectorsCmd = &cli.Command{
 	Usage:     "Query the sector set of a miner",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify miner to list sectors for")
@@ -308,13 +309,13 @@ var stateActiveSectorsCmd = &cli.Command{
 	Usage:     "Query the active sector set of a miner",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify miner to list sectors for")
@@ -357,13 +358,13 @@ var stateExecTraceCmd = &cli.Command{
 			return fmt.Errorf("message cid was invalid: %s", err)
 		}
 
-		capi, closer, err := GetFullNodeAPI(cctx)
+		capi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msg, err := capi.ChainGetMessage(ctx, mcid)
 		if err != nil {
@@ -436,13 +437,13 @@ var stateReplayCmd = &cli.Command{
 			return fmt.Errorf("message cid was invalid: %s", err)
 		}
 
-		fapi, closer, err := GetFullNodeAPI(cctx)
+		fapi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		res, err := fapi.StateReplay(ctx, types.EmptyTSK, mcid)
 		if err != nil {
@@ -481,13 +482,13 @@ var stateGetDealSetCmd = &cli.Command{
 	Usage:     "View on-chain deal info",
 	ArgsUsage: "[dealId]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify deal ID")
@@ -528,13 +529,13 @@ var stateListMinersCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
@@ -594,13 +595,13 @@ var stateListActorsCmd = &cli.Command{
 	Name:  "list-actors",
 	Usage: "list all actors in the network",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
@@ -625,13 +626,13 @@ var stateGetActorCmd = &cli.Command{
 	Usage:     "Print actor information",
 	ArgsUsage: "[actorrAddress]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass address of actor to get")
@@ -676,13 +677,13 @@ var stateLookupIDCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass address of actor to get")
@@ -720,13 +721,13 @@ var stateSectorSizeCmd = &cli.Command{
 	Usage:     "Look up miners sector size",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass miner's address")
@@ -757,13 +758,13 @@ var stateReadStateCmd = &cli.Command{
 	Usage:     "View a json representation of an actors state",
 	ArgsUsage: "[actorAddress]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass address of actor to get")
@@ -816,13 +817,13 @@ var stateListMessagesCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var toa, froma address.Address
 		if tos := cctx.String("to"); tos != "" {
@@ -941,13 +942,13 @@ var stateComputeStateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
@@ -1380,13 +1381,13 @@ var stateWaitMsgCmd = &cli.Command{
 			return fmt.Errorf("must specify message cid to wait for")
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msg, err := cid.Decode(cctx.Args().First())
 		if err != nil {
@@ -1416,13 +1417,13 @@ var stateSearchMsgCmd = &cli.Command{
 			return fmt.Errorf("must specify message cid to search for")
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msg, err := cid.Decode(cctx.Args().First())
 		if err != nil {
@@ -1510,13 +1511,13 @@ var stateCallCmd = &cli.Command{
 			return fmt.Errorf("must specify at least actor and method to invoke")
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		toa, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
@@ -1703,13 +1704,13 @@ var stateCircSupplyCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
@@ -1746,13 +1747,13 @@ var stateSectorCmd = &cli.Command{
 	Usage:     "Get miner sector info",
 	ArgsUsage: "[miner address] [sector number]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if cctx.Args().Len() != 2 {
 			return xerrors.Errorf("expected 2 params")
@@ -1831,13 +1832,13 @@ var stateMarketBalanceCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must specify address to print market balance for"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
@@ -1869,13 +1870,13 @@ var stateNtwkVersionCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("doesn't expect any arguments"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {

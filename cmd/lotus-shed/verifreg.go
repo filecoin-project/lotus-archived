@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
@@ -67,12 +67,12 @@ var verifRegAddVerifierCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		vrk, err := api.StateVerifiedRegistryRootKey(ctx, types.EmptyTSK)
 		if err != nil {
@@ -140,12 +140,12 @@ var verifRegVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		msg := &types.Message{
 			To:     verifreg.Address,
@@ -178,12 +178,12 @@ var verifRegListVerifiersCmd = &cli.Command{
 	Name:  "list-verifiers",
 	Usage: "list all verifiers",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
 		if err != nil {
@@ -208,12 +208,12 @@ var verifRegListClientsCmd = &cli.Command{
 	Name:  "list-clients",
 	Usage: "list all verified clients",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
 		if err != nil {
@@ -247,12 +247,12 @@ var verifRegCheckClientCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		dcap, err := api.StateVerifiedClientStatus(ctx, caddr, types.EmptyTSK)
 		if err != nil {
@@ -281,12 +281,12 @@ var verifRegCheckVerifierCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		head, err := api.ChainHead(ctx)
 		if err != nil {

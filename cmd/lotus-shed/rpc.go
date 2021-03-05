@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -35,7 +36,7 @@ var rpcCmd = &cli.Command{
 			rt = repo.StorageMiner
 		}
 
-		addr, headers, err := lcli.GetRawAPI(cctx, rt)
+		addr, headers, err := cliutil.GetRawAPI(cctx, rt)
 		if err != nil {
 			return err
 		}
@@ -54,7 +55,7 @@ var rpcCmd = &cli.Command{
 
 		addr = u.String()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		afmt := lcli.NewAppFmt(cctx.App)

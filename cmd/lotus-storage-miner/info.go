@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"sort"
 	"time"
 
@@ -23,7 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var infoCmd = &cli.Command{
@@ -44,19 +44,19 @@ var infoCmd = &cli.Command{
 func infoCmdAct(cctx *cli.Context) error {
 	color.NoColor = !cctx.Bool("color")
 
-	nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+	nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 	if err != nil {
 		return err
 	}
 	defer closer()
 
-	api, acloser, err := lcli.GetFullNodeAPI(cctx)
+	api, acloser, err := cliutil.GetFullNodeAPI(cctx)
 	if err != nil {
 		return err
 	}
 	defer acloser()
 
-	ctx := lcli.ReqContext(cctx)
+	ctx := cliutil.ReqContext(cctx)
 
 	fmt.Print("Chain: ")
 

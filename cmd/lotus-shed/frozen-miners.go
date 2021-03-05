@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -24,12 +25,12 @@ var frozenMinersCmd = &cli.Command{
 		},
 	},
 	Action: func(c *cli.Context) error {
-		api, acloser, err := lcli.GetFullNodeAPI(c)
+		api, acloser, err := cliutil.GetFullNodeAPI(c)
 		if err != nil {
 			return err
 		}
 		defer acloser()
-		ctx := lcli.ReqContext(c)
+		ctx := cliutil.ReqContext(c)
 
 		ts, err := lcli.LoadTipSet(ctx, c, api)
 		if err != nil {

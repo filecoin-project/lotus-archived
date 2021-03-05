@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 
 	"github.com/fatih/color"
 
@@ -128,13 +129,13 @@ func printMessage(cctx *cli.Context, msg *types.Message) error {
 	fmt.Println("Max Fees:", types.FIL(msg.RequiredFunds()))
 	fmt.Println("Max Total Cost:", types.FIL(big.Add(msg.RequiredFunds(), msg.Value)))
 
-	api, closer, err := lcli.GetFullNodeAPI(cctx)
+	api, closer, err := cliutil.GetFullNodeAPI(cctx)
 	if err != nil {
 		return err
 	}
 
 	defer closer()
-	ctx := lcli.ReqContext(cctx)
+	ctx := cliutil.ReqContext(cctx)
 
 	toact, err := api.StateGetActor(ctx, msg.To, types.EmptyTSK)
 	if err != nil {
@@ -263,13 +264,13 @@ func messageFromBytes(cctx *cli.Context, msgb []byte) (types.ChainMsg, error) {
 }
 
 func messageFromCID(cctx *cli.Context, c cid.Cid) (types.ChainMsg, error) {
-	api, closer, err := lcli.GetFullNodeAPI(cctx)
+	api, closer, err := cliutil.GetFullNodeAPI(cctx)
 	if err != nil {
 		return nil, err
 	}
 
 	defer closer()
-	ctx := lcli.ReqContext(cctx)
+	ctx := cliutil.ReqContext(cctx)
 
 	msgb, err := api.ChainReadObj(ctx, c)
 	if err != nil {

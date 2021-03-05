@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"strconv"
 
 	"golang.org/x/xerrors"
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var sectorsCmd = &cli.Command{
@@ -48,19 +48,19 @@ var terminateSectorCmd = &cli.Command{
 			return fmt.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
 		}
 
-		nodeApi, closer, err := lcli.GetFullNodeAPI(cctx)
+		nodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetStorageMinerAPI(cctx)
+		api, acloser, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		maddr, err := api.ActorAddress(ctx)
 		if err != nil {
@@ -152,19 +152,19 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 			return fmt.Errorf("at least one sector must be specified")
 		}
 
-		nodeApi, closer, err := lcli.GetFullNodeAPI(cctx)
+		nodeApi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetStorageMinerAPI(cctx)
+		api, acloser, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		maddr, err := api.ActorAddress(ctx)
 		if err != nil {

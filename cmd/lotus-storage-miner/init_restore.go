@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io/ioutil"
 	"os"
 
@@ -53,7 +54,7 @@ var initRestoreCmd = &cli.Command{
 
 		log.Info("Trying to connect to full node RPC")
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx) // TODO: consider storing full node address in config
+		api, closer, err := cliutil.GetFullNodeAPI(cctx) // TODO: consider storing full node address in config
 		if err != nil {
 			return err
 		}
@@ -61,7 +62,7 @@ var initRestoreCmd = &cli.Command{
 
 		log.Info("Checking full node version")
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		v, err := api.Version(ctx)
 		if err != nil {

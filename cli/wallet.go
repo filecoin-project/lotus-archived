@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -44,12 +45,12 @@ var walletNew = &cli.Command{
 	Usage:     "Generate a new key of the given type",
 	ArgsUsage: "[bls|secp256k1 (default secp256k1)]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		t := cctx.Args().First()
 		if t == "" {
@@ -88,12 +89,12 @@ var walletList = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		addrs, err := api.WalletList(ctx)
 		if err != nil {
@@ -175,12 +176,12 @@ var walletBalance = &cli.Command{
 	Usage:     "Get account balance",
 	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var addr address.Address
 		if cctx.Args().First() != "" {
@@ -211,12 +212,12 @@ var walletGetDefault = &cli.Command{
 	Name:  "default",
 	Usage: "Get default wallet address",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		addr, err := api.WalletDefaultAddress(ctx)
 		if err != nil {
@@ -233,12 +234,12 @@ var walletSetDefault = &cli.Command{
 	Usage:     "Set default wallet address",
 	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass address to set as default")
@@ -258,12 +259,12 @@ var walletExport = &cli.Command{
 	Usage:     "export keys",
 	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify key to export")
@@ -305,12 +306,12 @@ var walletImport = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var inpdata []byte
 		if !cctx.Args().Present() || cctx.Args().First() == "-" {
@@ -391,12 +392,12 @@ var walletSign = &cli.Command{
 	Usage:     "sign a message",
 	ArgsUsage: "<signing address> <hexMessage>",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() || cctx.NArg() != 2 {
 			return fmt.Errorf("must specify signing address and message to sign")
@@ -432,12 +433,12 @@ var walletVerify = &cli.Command{
 	Usage:     "verify the signature of a message",
 	ArgsUsage: "<signing address> <hexMessage> <signature>",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() || cctx.NArg() != 3 {
 			return fmt.Errorf("must specify signing address, message, and signature to verify")
@@ -484,12 +485,12 @@ var walletDelete = &cli.Command{
 	Usage:     "Delete an account from the wallet",
 	ArgsUsage: "<address> ",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() || cctx.NArg() != 1 {
 			return fmt.Errorf("must specify address to delete")
@@ -530,12 +531,12 @@ var walletMarketWithdraw = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return xerrors.Errorf("getting node API: %w", err)
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var wallet address.Address
 		if cctx.String("wallet") != "" {
@@ -635,12 +636,12 @@ var walletMarketAdd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return xerrors.Errorf("getting node API: %w", err)
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		// Get amount param
 		if !cctx.Args().Present() {

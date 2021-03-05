@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/cli/util"
 	"os"
 
 	dstore "github.com/ipfs/go-datastore"
@@ -20,7 +21,7 @@ import (
 )
 
 var backupCmd = lcli.BackupCmd("repo", repo.FullNode, func(cctx *cli.Context) (lcli.BackupAPI, jsonrpc.ClientCloser, error) {
-	return lcli.GetFullNodeAPI(cctx)
+	return cliutil.GetFullNodeAPI(cctx)
 })
 
 func restore(cctx *cli.Context, r repo.Repo) error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -30,7 +31,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
-	lcli "github.com/filecoin-project/lotus/cli"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -177,13 +177,13 @@ var runCmd = &cli.Command{
 		}
 
 		// Connect to storage-miner
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var nodeApi api.StorageMiner
 		var closer func()
 		var err error
 		for {
-			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx, lcli.StorageMinerUseHttp)
+			nodeApi, closer, err = cliutil.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
 			if err == nil {
 				_, err = nodeApi.Version(ctx)
 				if err == nil {
@@ -356,7 +356,7 @@ var runCmd = &cli.Command{
 		}
 
 		// Setup remote sector store
-		sminfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
+		sminfo, err := cliutil.GetAPIInfo(cctx, repo.StorageMiner)
 		if err != nil {
 			return xerrors.Errorf("could not get api info: %w", err)
 		}
@@ -442,7 +442,7 @@ var runCmd = &cli.Command{
 				return xerrors.Errorf("setting api endpoint: %w", err)
 			}
 
-			ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
+			ainfo, err := cliutil.GetAPIInfo(cctx, repo.StorageMiner)
 			if err != nil {
 				return xerrors.Errorf("could not get miner API info: %w", err)
 			}

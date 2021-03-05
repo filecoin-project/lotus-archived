@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"log"
 	"os"
 	"sort"
@@ -10,7 +11,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api"
-	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 // FullAPI is a JSON-RPC client targeting a full node. It's initialized in a
@@ -101,7 +101,7 @@ func initialize(c *cli.Context) error {
 
 	// Make the API client.
 	var err error
-	if FullAPI, Closer, err = lcli.GetFullNodeAPI(c); err != nil {
+	if FullAPI, Closer, err = cliutil.GetFullNodeAPI(c); err != nil {
 		err = fmt.Errorf("failed to locate Lotus node; err: %w", err)
 	}
 	return err

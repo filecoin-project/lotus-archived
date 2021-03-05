@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"strconv"
 	"time"
 
@@ -65,9 +66,9 @@ var disputerMsgCmd = &cli.Command{
 			return nil
 		}
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -146,13 +147,13 @@ var disputerStartCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		fromAddr, err := getSender(ctx, api, cctx.String("from"))
 		if err != nil {

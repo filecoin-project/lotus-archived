@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -23,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -243,7 +243,7 @@ var sealBenchCmd = &cli.Command{
 		// Only fetch parameters if actually needed
 		skipc2 := c.Bool("skip-commit2")
 		if !skipc2 {
-			if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), uint64(sectorSize)); err != nil {
+			if err := paramfetch.GetParams(cliutil.ReqContext(c), build.ParametersJSON(), uint64(sectorSize)); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 		}
@@ -738,7 +738,7 @@ var proveCmd = &cli.Command{
 			return xerrors.Errorf("unmarshalling input file: %w", err)
 		}
 
-		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), c2in.SectorSize); err != nil {
+		if err := paramfetch.GetParams(cliutil.ReqContext(c), build.ParametersJSON(), c2in.SectorSize); err != nil {
 			return xerrors.Errorf("getting params: %w", err)
 		}
 

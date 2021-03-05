@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -32,12 +33,12 @@ var syncStatusCmd = &cli.Command{
 	Name:  "status",
 	Usage: "check sync status",
 	Action: func(cctx *cli.Context) error {
-		apic, closer, err := GetFullNodeAPI(cctx)
+		apic, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		state, err := apic.SyncState(ctx)
 		if err != nil {
@@ -91,12 +92,12 @@ var syncWaitCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		napi, closer, err := GetFullNodeAPI(cctx)
+		napi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		return SyncWait(ctx, napi, cctx.Bool("watch"))
 	},
@@ -107,12 +108,12 @@ var syncMarkBadCmd = &cli.Command{
 	Usage:     "Mark the given block as bad, will prevent syncing to a chain that contains it",
 	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
-		napi, closer, err := GetFullNodeAPI(cctx)
+		napi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify block cid to mark")
@@ -138,12 +139,12 @@ var syncUnmarkBadCmd = &cli.Command{
 	},
 	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
-		napi, closer, err := GetFullNodeAPI(cctx)
+		napi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if cctx.Bool("all") {
 			return napi.SyncUnmarkAllBad(ctx)
@@ -167,12 +168,12 @@ var syncCheckBadCmd = &cli.Command{
 	Usage:     "check if the given block was marked bad, and for what reason",
 	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
-		napi, closer, err := GetFullNodeAPI(cctx)
+		napi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify block cid to check")
@@ -209,12 +210,12 @@ var syncCheckpointCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		napi, closer, err := GetFullNodeAPI(cctx)
+		napi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var ts *types.TipSet
 

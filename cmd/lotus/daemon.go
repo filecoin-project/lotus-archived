@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -33,7 +34,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
@@ -56,13 +56,13 @@ var daemonStopCmd = &cli.Command{
 	Usage: "Stop a running lotus daemon",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		err = api.Shutdown(lcli.ReqContext(cctx))
+		err = api.Shutdown(cliutil.ReqContext(cctx))
 		if err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ var DaemonCmd = &cli.Command{
 		freshRepo := err != repo.ErrRepoExists
 
 		if !isLite {
-			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
+			if err := paramfetch.GetParams(cliutil.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {
 				return xerrors.Errorf("fetching proof parameters: %w", err)
 			}
 		}
@@ -293,7 +293,7 @@ var DaemonCmd = &cli.Command{
 		// for RPC calls
 		liteModeDeps := node.Options()
 		if isLite {
-			gapi, closer, err := lcli.GetGatewayAPI(cctx)
+			gapi, closer, err := cliutil.GetGatewayAPI(cctx)
 			if err != nil {
 				return err
 			}

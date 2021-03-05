@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"math/rand"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
@@ -35,7 +35,7 @@ var electionRunDummy = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 		minerPow, err := types.BigFromString(cctx.String("miner-power"))
 		if err != nil {
 			return xerrors.Errorf("decoding miner-power: %w", err)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"os"
 	"text/tabwriter"
 
@@ -26,12 +27,12 @@ var piecesListPiecesCmd = &cli.Command{
 	Name:  "list-pieces",
 	Usage: "list registered pieces",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		pieceCids, err := nodeApi.PiecesListPieces(ctx)
 		if err != nil {
@@ -49,12 +50,12 @@ var piecesListCidInfosCmd = &cli.Command{
 	Name:  "list-cids",
 	Usage: "list registered payload CIDs",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		cids, err := nodeApi.PiecesListCidInfos(ctx)
 		if err != nil {
@@ -76,12 +77,12 @@ var piecesInfoCmd = &cli.Command{
 			return lcli.ShowHelp(cctx, fmt.Errorf("must specify piece cid"))
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		c, err := cid.Decode(cctx.Args().First())
 		if err != nil {
@@ -111,12 +112,12 @@ var piecesCidInfoCmd = &cli.Command{
 			return lcli.ShowHelp(cctx, fmt.Errorf("must specify payload cid"))
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		c, err := cid.Decode(cctx.Args().First())
 		if err != nil {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 )
 
@@ -48,12 +48,12 @@ var storageAttachCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetWorkerAPI(cctx)
+		nodeApi, closer, err := cliutil.GetWorkerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return xerrors.Errorf("must specify storage path to attach")

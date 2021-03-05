@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/binary"
+	"github.com/filecoin-project/lotus/cli/util"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"golang.org/x/xerrors"
 
 	"github.com/urfave/cli/v2"
@@ -22,13 +22,13 @@ func init() {
 	AdvanceBlockCmd = &cli.Command{
 		Name: "advance-block",
 		Action: func(cctx *cli.Context) error {
-			api, closer, err := lcli.GetFullNodeAPI(cctx)
+			api, closer, err := cliutil.GetFullNodeAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer closer()
 
-			ctx := lcli.ReqContext(cctx)
+			ctx := cliutil.ReqContext(cctx)
 			head, err := api.ChainHead(ctx)
 			if err != nil {
 				return err

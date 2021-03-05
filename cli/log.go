@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -20,13 +21,13 @@ var logList = &cli.Command{
 	Name:  "list",
 	Usage: "List log systems",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		systems, err := api.LogList(ctx)
 		if err != nil {
@@ -71,12 +72,12 @@ var logSetLevel = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("level is required")

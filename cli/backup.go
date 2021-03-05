@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -84,7 +85,7 @@ func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Comma
 		}
 		defer closer()
 
-		err = api.CreateBackup(ReqContext(cctx), cctx.Args().First())
+		err = api.CreateBackup(cliutil.ReqContext(cctx), cctx.Args().First())
 		if err != nil {
 			return err
 		}

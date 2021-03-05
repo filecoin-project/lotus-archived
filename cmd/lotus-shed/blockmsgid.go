@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 
 	blake2b "github.com/minio/blake2b-simd"
 	"github.com/urfave/cli/v2"
@@ -10,7 +11,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var blockmsgidCmd = &cli.Command{
@@ -18,13 +18,13 @@ var blockmsgidCmd = &cli.Command{
 	Usage:     "Print a block's pubsub message ID",
 	ArgsUsage: "<blockCid> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		for _, arg := range cctx.Args().Slice() {
 			blkcid, err := cid.Decode(arg)

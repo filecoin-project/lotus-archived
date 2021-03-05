@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"os"
 	"text/tabwriter"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var retrievalDealsCmd = &cli.Command{
@@ -39,18 +39,18 @@ var retrievalDealSelectionShowCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List retrieval deal proposal selection criteria",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		onlineOk, err := smapi.DealsConsiderOnlineRetrievalDeals(lcli.DaemonContext(cctx))
+		onlineOk, err := smapi.DealsConsiderOnlineRetrievalDeals(cliutil.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
 
-		offlineOk, err := smapi.DealsConsiderOfflineRetrievalDeals(lcli.DaemonContext(cctx))
+		offlineOk, err := smapi.DealsConsiderOfflineRetrievalDeals(cliutil.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
@@ -66,18 +66,18 @@ var retrievalDealSelectionResetCmd = &cli.Command{
 	Name:  "reset",
 	Usage: "Reset retrieval deal proposal selection criteria to default values",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		err = smapi.DealsSetConsiderOnlineRetrievalDeals(lcli.DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderOnlineRetrievalDeals(cliutil.DaemonContext(cctx), true)
 		if err != nil {
 			return err
 		}
 
-		err = smapi.DealsSetConsiderOfflineRetrievalDeals(lcli.DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderOfflineRetrievalDeals(cliutil.DaemonContext(cctx), true)
 		if err != nil {
 			return err
 		}
@@ -98,21 +98,21 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
 		if cctx.Bool("online") {
-			err = smapi.DealsSetConsiderOnlineRetrievalDeals(lcli.DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderOnlineRetrievalDeals(cliutil.DaemonContext(cctx), false)
 			if err != nil {
 				return err
 			}
 		}
 
 		if cctx.Bool("offline") {
-			err = smapi.DealsSetConsiderOfflineRetrievalDeals(lcli.DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderOfflineRetrievalDeals(cliutil.DaemonContext(cctx), false)
 			if err != nil {
 				return err
 			}
@@ -126,13 +126,13 @@ var retrievalDealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all active retrieval deals for this miner",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		deals, err := api.MarketListRetrievalDeals(lcli.DaemonContext(cctx))
+		deals, err := api.MarketListRetrievalDeals(cliutil.DaemonContext(cctx))
 		if err != nil {
 			return err
 		}
@@ -184,9 +184,9 @@ var retrievalSetAskCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		ctx := lcli.DaemonContext(cctx)
+		ctx := cliutil.DaemonContext(cctx)
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -238,9 +238,9 @@ var retrievalGetAskCmd = &cli.Command{
 	Usage: "Get the provider's current retrieval ask",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		ctx := lcli.DaemonContext(cctx)
+		ctx := cliutil.DaemonContext(cctx)
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := cliutil.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}

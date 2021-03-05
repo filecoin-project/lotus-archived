@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"strconv"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -15,7 +16,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/urfave/cli/v2"
 )
 
@@ -33,13 +33,13 @@ var syncValidateCmd = &cli.Command{
 	Name:  "validate",
 	Usage: "checks whether a provided tipset is valid",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if cctx.Args().Len() < 1 {
 			fmt.Println("usage: <blockCid1> <blockCid2>...")
@@ -85,13 +85,13 @@ var syncScrapePowerCmd = &cli.Command{
 			return nil
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 
 		defer closer()
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if cctx.Args().Len() < 1 {
 			fmt.Println("usage: <blockCid1> <blockCid2>...")

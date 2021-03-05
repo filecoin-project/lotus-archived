@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"os"
 	"sort"
 	"strings"
@@ -50,12 +51,12 @@ var NetPeers = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 		peers, err := api.NetPeers(ctx)
 		if err != nil {
 			return err
@@ -93,12 +94,12 @@ var netScores = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 		scores, err := api.NetPubsubScores(ctx)
 		if err != nil {
 			return err
@@ -126,12 +127,12 @@ var NetListen = &cli.Command{
 	Name:  "listen",
 	Usage: "List listen addresses",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		addrs, err := api.NetAddrsListen(ctx)
 		if err != nil {
@@ -150,12 +151,12 @@ var netConnect = &cli.Command{
 	Usage:     "Connect to a peer",
 	ArgsUsage: "[peerMultiaddr|minerActorAddress]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		pis, err := addrutil.ParseAddresses(ctx, cctx.Args().Slice())
 		if err != nil {
@@ -164,7 +165,7 @@ var netConnect = &cli.Command{
 				return err
 			}
 
-			na, fc, err := GetFullNodeAPI(cctx)
+			na, fc, err := cliutil.GetFullNodeAPI(cctx)
 			if err != nil {
 				return err
 			}
@@ -216,13 +217,13 @@ var NetId = &cli.Command{
 	Name:  "id",
 	Usage: "Get node identity",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		pid, err := api.ID(ctx)
 		if err != nil {
@@ -249,13 +250,13 @@ var netFindPeer = &cli.Command{
 			return err
 		}
 
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		addrs, err := api.NetFindPeer(ctx, pid)
 
@@ -272,13 +273,13 @@ var NetReachability = &cli.Command{
 	Name:  "reachability",
 	Usage: "Print information about reachability from the internet",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		i, err := api.NetAutoNatStatus(ctx)
 		if err != nil {
@@ -307,13 +308,13 @@ var NetBandwidthCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		bypeer := cctx.Bool("by-peer")
 		byproto := cctx.Bool("by-protocol")
@@ -403,12 +404,12 @@ var NetBlockAddPeer = &cli.Command{
 	Usage:     "Block a peer",
 	ArgsUsage: "<Peer> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var peers []peer.ID
 		for _, s := range cctx.Args().Slice() {
@@ -429,12 +430,12 @@ var NetBlockAddIP = &cli.Command{
 	Usage:     "Block an IP address",
 	ArgsUsage: "<IP> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		return api.NetBlockAdd(ctx, atypes.NetBlockList{IPAddrs: cctx.Args().Slice()})
 	},
@@ -445,12 +446,12 @@ var NetBlockAddSubnet = &cli.Command{
 	Usage:     "Block an IP subnet",
 	ArgsUsage: "<CIDR> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		return api.NetBlockAdd(ctx, atypes.NetBlockList{IPSubnets: cctx.Args().Slice()})
 	},
@@ -471,12 +472,12 @@ var NetBlockRemovePeer = &cli.Command{
 	Usage:     "Unblock a peer",
 	ArgsUsage: "<Peer> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var peers []peer.ID
 		for _, s := range cctx.Args().Slice() {
@@ -497,12 +498,12 @@ var NetBlockRemoveIP = &cli.Command{
 	Usage:     "Unblock an IP address",
 	ArgsUsage: "<IP> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		return api.NetBlockRemove(ctx, atypes.NetBlockList{IPAddrs: cctx.Args().Slice()})
 	},
@@ -513,12 +514,12 @@ var NetBlockRemoveSubnet = &cli.Command{
 	Usage:     "Unblock an IP subnet",
 	ArgsUsage: "<CIDR> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		return api.NetBlockRemove(ctx, atypes.NetBlockList{IPSubnets: cctx.Args().Slice()})
 	},
@@ -528,12 +529,12 @@ var NetBlockListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "list connection gating rules",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := cliutil.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		acl, err := api.NetBlockList(ctx)
 		if err != nil {

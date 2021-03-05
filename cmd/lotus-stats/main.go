@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/cli/util"
 	"os"
 
 	"github.com/filecoin-project/lotus/build"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/tools/stats"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -142,7 +142,7 @@ var runCmd = &cli.Command{
 			height = h
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}

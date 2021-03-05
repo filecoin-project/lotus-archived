@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"strconv"
 	"strings"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
-	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var ledgerCmd = &cli.Command{
@@ -44,7 +44,7 @@ var ledgerListAddressesCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		var api api.FullNode
 		if cctx.Bool("print-balances") {
-			a, closer, err := lcli.GetFullNodeAPI(cctx)
+			a, closer, err := cliutil.GetFullNodeAPI(cctx)
 			if err != nil {
 				return err
 			}
@@ -53,7 +53,7 @@ var ledgerListAddressesCmd = &cli.Command{
 
 			defer closer()
 		}
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		fl, err := ledgerfil.FindLedgerFilecoinApp()
 		if err != nil {

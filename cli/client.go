@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io"
 	"math"
 	"math/rand"
@@ -115,12 +116,12 @@ var clientImportCmd = &cli.Command{
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if cctx.NArg() != 1 {
 			return xerrors.New("expected input path as the only arg")
@@ -163,12 +164,12 @@ var clientDropCmd = &cli.Command{
 			return xerrors.Errorf("no imports specified")
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var ids []multistore.StoreID
 		for i, s := range cctx.Args().Slice() {
@@ -198,12 +199,12 @@ var clientCommPCmd = &cli.Command{
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if cctx.Args().Len() != 1 {
 			return fmt.Errorf("usage: commP <inputPath>")
@@ -230,12 +231,12 @@ var clientCarGenCmd = &cli.Command{
 	Usage:     "Generate a car file from input",
 	ArgsUsage: "[inputPath outputPath]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if cctx.Args().Len() != 2 {
 			return fmt.Errorf("usage: generate-car <inputPath> <outputPath>")
@@ -262,12 +263,12 @@ var clientLocalCmd = &cli.Command{
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		list, err := api.ClientListImports(ctx)
 		if err != nil {
@@ -341,12 +342,12 @@ var clientDealCmd = &cli.Command{
 			return interactiveDeal(cctx)
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 		afmt := NewAppFmt(cctx.App)
 
 		if cctx.NArg() != 4 {
@@ -474,12 +475,12 @@ var clientDealCmd = &cli.Command{
 }
 
 func interactiveDeal(cctx *cli.Context) error {
-	api, closer, err := GetFullNodeAPI(cctx)
+	api, closer, err := cliutil.GetFullNodeAPI(cctx)
 	if err != nil {
 		return err
 	}
 	defer closer()
-	ctx := ReqContext(cctx)
+	ctx := cliutil.ReqContext(cctx)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	afmt := NewAppFmt(cctx.App)
@@ -901,12 +902,12 @@ var clientFindCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		// Check if we already have this data locally
 
@@ -978,12 +979,12 @@ var clientRetrieveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
 		}
 
-		fapi, closer, err := GetFullNodeAPI(cctx)
+		fapi, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 		afmt := NewAppFmt(cctx.App)
 
 		var payer address.Address
@@ -1123,12 +1124,12 @@ var clientDealStatsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		localDeals, err := api.ClientListDeals(ctx)
 		if err != nil {
@@ -1202,12 +1203,12 @@ var clientListAsksCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		asks, err := GetAsks(ctx, api)
 		if err != nil {
@@ -1417,12 +1418,12 @@ var clientQueryAskCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var pid peer.ID
 		if pidstr := cctx.String("peerid"); pidstr != "" {
@@ -1496,12 +1497,12 @@ var clientListDeals = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		verbose := cctx.Bool("verbose")
 		color := cctx.Bool("color")
@@ -1717,12 +1718,12 @@ var clientGetDealCmd = &cli.Command{
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		propcid, err := cid.Decode(cctx.Args().First())
 		if err != nil {
@@ -1766,12 +1767,12 @@ var clientBalancesCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		var addr address.Address
 		if clientFlag := cctx.String("client"); clientFlag != "" {
@@ -1820,12 +1821,12 @@ var clientStat = &cli.Command{
 	Usage:     "Print information about a locally stored file (piece size, etc)",
 	ArgsUsage: "<cid>",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		if !cctx.Args().Present() || cctx.NArg() != 1 {
 			return fmt.Errorf("must specify cid of data")
@@ -1866,12 +1867,12 @@ var clientRestartTransfer = &cli.Command{
 		if !cctx.Args().Present() {
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
 		}
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
 		if err != nil {
@@ -1931,12 +1932,12 @@ var clientCancelTransfer = &cli.Command{
 		if !cctx.Args().Present() {
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
 		}
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
 		if err != nil {
@@ -2003,12 +2004,12 @@ var clientListTransfers = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		channels, err := api.ClientListDataTransfers(ctx)
 		if err != nil {

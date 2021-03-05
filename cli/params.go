@@ -3,6 +3,7 @@ package cli
 import (
 	"github.com/docker/go-units"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/lotus/cli/util"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -23,7 +24,7 @@ var fetchParamCmd = &cli.Command{
 		}
 		sectorSize := uint64(sectorSizeInt)
 
-		err = paramfetch.GetParams(ReqContext(cctx), build.ParametersJSON(), sectorSize)
+		err = paramfetch.GetParams(cliutil.ReqContext(cctx), build.ParametersJSON(), sectorSize)
 		if err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}

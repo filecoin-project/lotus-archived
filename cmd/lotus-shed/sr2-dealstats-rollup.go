@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 	"io"
 	"net/http"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -115,7 +115,7 @@ var rollupDealStatsCmd = &cli.Command{
 			return fmt.Errorf("creation of destination '%s' failed: %s", outDirName, err)
 		}
 
-		ctx := lcli.ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 
 		projListName := cctx.Args().Get(1)
 		var projListFh *os.File
@@ -208,7 +208,7 @@ var rollupDealStatsCmd = &cli.Command{
 		}
 		defer outUnfilteredStatsFd.Close() //nolint:errcheck
 
-		api, apiCloser, err := lcli.GetFullNodeAPI(cctx)
+		api, apiCloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}

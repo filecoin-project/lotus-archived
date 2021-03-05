@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/cli/util"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -64,13 +65,13 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)
+		nodeApi, ncloser, err := cliutil.GetFullNodeAPI(cctx)
 		if err != nil {
 			return xerrors.Errorf("getting full node api: %w", err)
 		}
 		defer ncloser()
 
-		ctx, _ := tag.New(lcli.DaemonContext(cctx),
+		ctx, _ := tag.New(cliutil.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.BuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "miner"),

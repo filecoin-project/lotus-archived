@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/cli/util"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -73,7 +74,7 @@ var sendCmd = &cli.Command{
 		}
 		defer srv.Close() //nolint:errcheck
 
-		ctx := ReqContext(cctx)
+		ctx := cliutil.ReqContext(cctx)
 		var params SendParams
 
 		params.To, err = address.NewFromString(cctx.Args().Get(0))
