@@ -52,6 +52,7 @@ func main() {
 		rpcCmd,
 		cidCmd,
 		blockmsgidCmd,
+		findDupeNonceCmd,
 	}
 
 	app := &cli.App{
