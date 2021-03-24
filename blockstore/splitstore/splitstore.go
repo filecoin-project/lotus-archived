@@ -455,6 +455,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 		startBF := time.Now()
 		epoch := curTs.Height()
 		count := 0
+		missing := 0
 		err := s.walk(curTs, baseEpoch, true, func(c cid.Cid) error {
 			has, err := s.hot.Has(c)
 			if err != nil {
@@ -468,6 +469,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 			blk, err := s.cold.Get(c)
 			if err != nil {
 				if err == bstore.ErrNotFound {
+					missing++
 					return nil
 				}
 				return err
@@ -490,7 +492,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 		if err != nil {
 			log.Errorf("error backfilling hotstore: %s", err)
 		} else {
-			log.Infow("backfilling done", "took", time.Since(startBF), "count", count)
+			log.Infow("backfilling done", "took", time.Since(startBF), "count", count, "missing", missing)
 		}
 	}(s.curTs, s.baseEpoch)
 
