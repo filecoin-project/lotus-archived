@@ -443,6 +443,50 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 
 	log.Infow("starting splitstore", "baseEpoch", s.baseEpoch, "warmupEpoch", s.warmupEpoch)
 
+	// XXX temporary code
+	atomic.StoreInt32(&s.compacting, 1)
+	go func(curTs *types.TipSet, baseEpoch abi.ChainEpoch) {
+		defer atomic.StoreInt32(&s.compacting, 0)
+		log.Infof("backfilling hotstore")
+		startBF := time.Now()
+		epoch := curTs.Height()
+		count := 0
+		err := s.walk(curTs, baseEpoch, true, func(c cid.Cid) error {
+			has, err := s.hot.Has(c)
+			if err != nil {
+				return err
+			}
+
+			if has {
+				return nil
+			}
+
+			blk, err := s.cold.Get(c)
+			if err != nil {
+				return err
+			}
+
+			err = s.tracker.Put(c, epoch)
+			if err != nil {
+				return err
+			}
+
+			err = s.hot.Put(blk)
+			if err != nil {
+				return err
+			}
+
+			count++
+
+			return nil
+		})
+		if err != nil {
+			log.Errorf("error backfilling hotstore: %s", err)
+		} else {
+			log.Infow("backfilling done", "took", time.Since(startBF), "count", count)
+		}
+	}(s.curTs, s.baseEpoch)
+
 	// watch the chain
 	chain.SubscribeHeadChanges(s.HeadChange)
 
