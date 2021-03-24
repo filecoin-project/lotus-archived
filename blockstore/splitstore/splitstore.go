@@ -468,7 +468,6 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 			blk, err := s.cold.Get(c)
 			if err != nil {
 				if err == bstore.ErrNotFound {
-					log.Warnf("missing object: %s: %s", c, err)
 					return nil
 				}
 				return err
