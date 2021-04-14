@@ -18,24 +18,38 @@ func Collect(ctx context.Context, api api.FullNode, influx client.Client, databa
 	wq := NewInfluxWriteQueue(ctx, influx)
 	defer wq.Close()
 
+	collect := true
+
 	for tipset := range tipsetsCh {
 		log.Infow("Collect stats", "height", tipset.Height())
 		pl := NewPointList()
 		height := tipset.Height()
 
+		s := time.Now()
 		if err := RecordTipsetPoints(ctx, api, pl, tipset); err != nil {
 			log.Warnw("Failed to record tipset", "height", height, "error", err)
 			continue
 		}
+		log.Debugw("Collecting stats for tipset", "elapsed", time.Now().Sub(s).Seconds())
 
+		s = time.Now()
 		if err := RecordTipsetMessagesPoints(ctx, api, pl, tipset); err != nil {
 			log.Warnw("Failed to record messages", "height", height, "error", err)
 			continue
 		}
+		log.Debugw("Collecting stats for messages", "elapsed", time.Now().Sub(s).Seconds())
 
-		if err := RecordTipsetStatePoints(ctx, api, pl, tipset); err != nil {
+		s = time.Now()
+		if err := RecordTipsetStatePoints(ctx, api, pl, tipset, collect); err != nil {
 			log.Warnw("Failed to record state", "height", height, "error", err)
 			continue
+		}
+		log.Debugw("Collecting stats for state", "elapsed", time.Now().Sub(s).Seconds())
+
+		if collect {
+			collect = false
+		} else {
+			collect = true
 		}
 
 		// Instead of having to pass around a bunch of generic stuff we want for each point

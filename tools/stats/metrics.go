@@ -238,7 +238,7 @@ func (ht *ApiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error)
 	return cid.Undef, fmt.Errorf("Put is not implemented on ApiIpldStore")
 }
 
-func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
+func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet, collectMiners bool) error {
 	attoFil := types.NewInt(build.FilecoinPrecision).Int
 
 	//TODO: StatePledgeCollateral API is not implemented and is commented out - re-enable this block once the API is implemented again.
@@ -280,17 +280,21 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 		return err
 	}
 
-	return powerActorState.ForEachClaim(func(addr address.Address, claim power.Claim) error {
-		if claim.QualityAdjPower.Int64() == 0 {
+	if collectMiners {
+		return powerActorState.ForEachClaim(func(addr address.Address, claim power.Claim) error {
+			if claim.QualityAdjPower.Int64() == 0 {
+				return nil
+			}
+
+			p = NewPoint("chain.miner_power", claim.QualityAdjPower.Int64())
+			p.AddTag("miner", addr.String())
+			pl.AddPoint(p)
+
 			return nil
-		}
-
-		p = NewPoint("chain.miner_power", claim.QualityAdjPower.Int64())
-		p.AddTag("miner", addr.String())
-		pl.AddPoint(p)
-
+		})
+	} else {
 		return nil
-	})
+	}
 }
 
 type msgTag struct {
