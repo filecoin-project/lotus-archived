@@ -7,3 +7,7 @@
 [submodule "extern/test-vectors"]
 	path = extern/test-vectors
 	url = https://github.com/filecoin-project/test-vectors.git
+[submodule "extern/specs-actors-v4"]
+    path = extern/specs-actors-v4
+    url = git@github.com:filecoin-project/specs-actors-ghsa-72g3-8g93-5q8c.git
+    branch = advisory-fix-1
