@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv4"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
 	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv10"
+	//"github.com/filecoin-project/specs-actors/v4/actors/migration/nv12"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
@@ -190,6 +191,22 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Height:    build.UpgradeNorwegianHeight,
 		Network:   network.Version11,
 		Migration: nil,
+	}, {
+		Height:    build.UpgradeActorsV4Height,
+		Network:   network.Version12,
+		Migration: UpgradeActorsV4,
+		PreMigrations: []PreMigration{{
+			PreMigration:    PreUpgradeActorsV4,
+			StartWithin:     120,
+			DontStartWithin: 60,
+			StopWithin:      35,
+		}, {
+			PreMigration:    PreUpgradeActorsV4,
+			StartWithin:     30,
+			DontStartWithin: 15,
+			StopWithin:      5,
+		}},
+		Expensive: true,
 	}}
 
 	for _, u := range updates {
@@ -1061,6 +1078,14 @@ func upgradeActorsV3Common(
 	}
 
 	return newRoot, nil
+}
+
+func UpgradeActorsV4(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	return root, nil // TODO
+}
+
+func PreUpgradeActorsV4(ctx context.Context, sm *StateManager, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	return nil // TODO
 }
 
 func setNetworkName(ctx context.Context, store adt.Store, tree *state.StateTree, name string) error {
