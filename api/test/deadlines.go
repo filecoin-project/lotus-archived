@@ -39,15 +39,15 @@ type dltest struct {
 // * goes through v4 upgrade
 // * goes through PP
 // * creates minerD
-// * makes sure that miner B/D is inactive, A/C still are
+// * makes sure that miner B/D are inactive, A/C still are
 // * pledges sectors on miner B/D
 // * disables post on miner C
 // * goes through PP
-// * asserts that miner C looses power
+// * asserts that miner C loses power
 // * asserts that miner B/D is active and has power
 // * disables post on miner B
 // * goes through another PP
-// * asserts that miner B looses power
+// * asserts that miner B loses power
 func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	var upgradeH abi.ChainEpoch = 4000
 	var provingPeriod abi.ChainEpoch = 2880
@@ -199,7 +199,7 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > upgradeH+(provingPeriod*2) {
+		if head.Height() > upgradeH+(provingPeriod*3) {
 			fmt.Printf("Now head.Height = %d\n", head.Height())
 			break
 		}
@@ -220,7 +220,7 @@ func TestDeadlineToggling(t *testing.T, b APIBuilder, blocktime time.Duration) {
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > upgradeH+(provingPeriod*3) {
+		if head.Height() > upgradeH+(provingPeriod*5) {
 			fmt.Printf("Now head.Height = %d\n", head.Height())
 			break
 		}
