@@ -211,7 +211,11 @@ func (ts *testSuite) testNonGenesisMiner(t *testing.T) {
 		{Full: 0, Preseal: PresealGenesis},
 	})
 
-	full := n[0].FullNode.(*impl.FullNodeAPI)
+	full, ok := n[0].FullNode.(*impl.FullNodeAPI)
+	if !ok {
+		t.Skip("not testing with a full node")
+		return
+	}
 	genesisMiner := sn[0]
 
 	bm := NewBlockMiner(ctx, t, genesisMiner, 4*time.Millisecond)
