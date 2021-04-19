@@ -325,6 +325,10 @@ func (s *state4) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
 	return s.State.DeadlineInfo(epoch), nil
 }
 
+func (s *state4) DeadlineCronActive() (bool, error) {
+	return s.State.DeadlineCronActive, nil
+}
+
 func (s *state4) sectors() (adt.Array, error) {
 	return adt4.AsArray(s.store, s.Sectors, miner4.SectorsAmtBitwidth)
 }
