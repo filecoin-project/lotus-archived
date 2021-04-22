@@ -309,7 +309,7 @@ var sealBenchCmd = &cli.Command{
 			SectorNumber:   sectorNumber,
 			SealingResults: sealTimings,
 		}
-		if err := bo.SumSealingTime(); err != nil {
+		if err := bo.SumSealingTime(); robench == "" && err != nil {
 			return err
 		}
 
@@ -384,54 +384,57 @@ var sealBenchCmd = &cli.Command{
 				log.Error("post verification failed")
 			}
 			verifyWinningPost2 := time.Now()
+			/*
+				log.Info("computing window post snark (cold)")
+				wproof1, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
+				if err != nil {
+					return err
+				}
+			*/
 
-			log.Info("computing window post snark (cold)")
-			wproof1, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
-			if err != nil {
-				return err
-			}
+			/*
+				windowpost1 := time.Now()
+					log.Info("computing window post snark (hot)")
+					wproof2, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
+					if err != nil {
+						return err
+					}
+			*/
 
-			windowpost1 := time.Now()
+			/*
+				windowpost2 := time.Now()
+						wpvi1 := saproof2.WindowPoStVerifyInfo{
+							Randomness:        challenge[:],
+							Proofs:            wproof1,
+							ChallengedSectors: sealedSectors,
+							Prover:            mid,
+						}
+						ok, err = ffiwrapper.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi1)
+						if err != nil {
+							return err
+						}
+						if !ok {
+							log.Error("window post verification failed")
+						}
 
-			log.Info("computing window post snark (hot)")
-			wproof2, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, sealedSectors, challenge[:])
-			if err != nil {
-				return err
-			}
+						verifyWindowpost1 := time.Now()
 
-			windowpost2 := time.Now()
+						wpvi2 := saproof2.WindowPoStVerifyInfo{
+							Randomness:        challenge[:],
+							Proofs:            wproof2,
+							ChallengedSectors: sealedSectors,
+							Prover:            mid,
+						}
+						ok, err = ffiwrapper.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi2)
+						if err != nil {
+							return err
+						}
+						if !ok {
+							log.Error("window post verification failed")
+						}
 
-			wpvi1 := saproof2.WindowPoStVerifyInfo{
-				Randomness:        challenge[:],
-				Proofs:            wproof1,
-				ChallengedSectors: sealedSectors,
-				Prover:            mid,
-			}
-			ok, err = ffiwrapper.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi1)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				log.Error("window post verification failed")
-			}
-
-			verifyWindowpost1 := time.Now()
-
-			wpvi2 := saproof2.WindowPoStVerifyInfo{
-				Randomness:        challenge[:],
-				Proofs:            wproof2,
-				ChallengedSectors: sealedSectors,
-				Prover:            mid,
-			}
-			ok, err = ffiwrapper.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi2)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				log.Error("window post verification failed")
-			}
-
-			verifyWindowpost2 := time.Now()
+					verifyWindowpost2 := time.Now()
+			*/
 
 			bo.PostGenerateCandidates = gencandidates.Sub(beforePost)
 			bo.PostWinningProofCold = winningpost1.Sub(gencandidates)
@@ -439,10 +442,12 @@ var sealBenchCmd = &cli.Command{
 			bo.VerifyWinningPostCold = verifyWinningPost1.Sub(winnningpost2)
 			bo.VerifyWinningPostHot = verifyWinningPost2.Sub(verifyWinningPost1)
 
-			bo.PostWindowProofCold = windowpost1.Sub(verifyWinningPost2)
-			bo.PostWindowProofHot = windowpost2.Sub(windowpost1)
-			bo.VerifyWindowPostCold = verifyWindowpost1.Sub(windowpost2)
-			bo.VerifyWindowPostHot = verifyWindowpost2.Sub(verifyWindowpost1)
+			/*
+				bo.PostWindowProofCold = windowpost1.Sub(verifyWinningPost2)
+				bo.PostWindowProofHot = windowpost2.Sub(windowpost1)
+					bo.VerifyWindowPostCold = verifyWindowpost1.Sub(windowpost2)
+					bo.VerifyWindowPostHot = verifyWindowpost2.Sub(verifyWindowpost1)
+			*/
 		}
 
 		bo.EnvVar = make(map[string]string)
