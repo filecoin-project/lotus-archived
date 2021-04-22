@@ -3,7 +3,6 @@ package drand
 import (
 	"bytes"
 	"context"
-	"sync"
 	"time"
 
 	dchain "github.com/drand/drand/chain"
@@ -62,7 +61,6 @@ type DrandBeacon struct {
 	filGenTime   uint64
 	filRoundTime uint64
 
-	cacheLk    sync.Mutex
 	localCache *lru.Cache
 }
 
@@ -162,14 +160,10 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 	return out
 }
 func (db *DrandBeacon) cacheValue(e types.BeaconEntry) {
-	db.cacheLk.Lock()
-	defer db.cacheLk.Unlock()
 	db.localCache.Add(e.Round, e)
 }
 
 func (db *DrandBeacon) getCachedValue(round uint64) *types.BeaconEntry {
-	db.cacheLk.Lock()
-	defer db.cacheLk.Unlock()
 	v, ok := db.localCache.Get(round)
 	if !ok {
 		return nil
