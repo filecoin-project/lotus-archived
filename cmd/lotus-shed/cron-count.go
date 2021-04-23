@@ -83,7 +83,7 @@ func countDeadlineCrons(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	for _, addr := range activeMiners {
+	for addr, _ := range activeMiners {
 		fmt.Printf("%s\n", addr)
 	}
 
