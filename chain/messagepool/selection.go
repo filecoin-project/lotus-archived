@@ -13,6 +13,7 @@ import (
 	tbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -700,7 +701,7 @@ func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 }
 
 func isMessageMute(m *types.Message, ts *types.TipSet) bool {
-	if ts.Height() > build.UpgradeActorsV4Height {
+	if api.RunningNodeType != api.NodeFull || ts.Height() > build.UpgradeActorsV4Height {
 		return false
 	}
 

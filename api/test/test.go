@@ -171,6 +171,9 @@ var MineNext = miner.MineReq{
 
 func (ts *testSuite) testVersion(t *testing.T) {
 	api.RunningNodeType = api.NodeFull
+	t.Cleanup(func() {
+		api.RunningNodeType = api.NodeUnknown
+	})
 
 	ctx := context.Background()
 	apis, _ := ts.makeNodes(t, OneFull, OneMiner)
