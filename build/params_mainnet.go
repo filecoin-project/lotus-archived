@@ -59,8 +59,8 @@ var UpgradeActorsV3Height = abi.ChainEpoch(550321)
 // 2021-04-12T22:00:00Z
 const UpgradeNorwegianHeight = 665280
 
-// 2021-04-28T22:00:00Z
-var UpgradeActorsV4Height = abi.ChainEpoch(711360)
+// 2021-04-29T06:00:00Z
+var UpgradeActorsV4Height = abi.ChainEpoch(712320)
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))

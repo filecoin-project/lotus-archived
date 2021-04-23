@@ -42,7 +42,7 @@ const UpgradeOrangeHeight = 300
 const UpgradeActorsV3Height = 600
 const UpgradeNorwegianHeight = 114000
 
-const UpgradeActorsV4Height = 192829
+const UpgradeActorsV4Height = 193000
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(32 << 30))
