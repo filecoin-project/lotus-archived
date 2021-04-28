@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -56,6 +57,10 @@ func findDeadlineCrons(c *cli.Context) (map[address.Address]struct{}, error) {
 	}
 	activeMiners := make(map[address.Address]struct{})
 	for _, mAddr := range mAddrs {
+		if ts.Height() <= build.UpgradeActorsV4Height { // All miners have active cron before v4
+			activeMiners[mAddr] = struct{}{}
+			continue
+		}
 		st, err := api.StateReadState(ctx, mAddr, ts.Key())
 		if err != nil {
 			return nil, err
