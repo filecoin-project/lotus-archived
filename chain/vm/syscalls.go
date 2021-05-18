@@ -3,7 +3,9 @@ package vm
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	goruntime "runtime"
 	"sync"
 
@@ -294,15 +296,30 @@ func (ss *syscallShim) VerifySignature(sig crypto.Signature, addr address.Addres
 
 var BatchSealVerifyParallelism = goruntime.NumCPU()
 
+var f *os.File
+var e *json.Encoder
+var lk sync.Mutex
+
+func init() {
+	f, err := os.Create("proofs.json")
+	if err != nil {
+		panic(err)
+	}
+
+	e = json.NewEncoder(f)
+}
+
 func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]proof2.SealVerifyInfo) (map[address.Address][]bool, error) {
 	out := make(map[address.Address][]bool)
 
 	sema := make(chan struct{}, BatchSealVerifyParallelism)
 
 	var wg sync.WaitGroup
+	lk.Lock()
 	for addr, seals := range inp {
 		results := make([]bool, len(seals))
 		out[addr] = results
+		_ = e.Encode(seals)
 
 		for i, s := range seals {
 			wg.Add(1)
@@ -321,6 +338,8 @@ func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]proof2.SealVer
 			}(addr, i, s, results)
 		}
 	}
+
+	lk.Unlock()
 	wg.Wait()
 
 	return out, nil
