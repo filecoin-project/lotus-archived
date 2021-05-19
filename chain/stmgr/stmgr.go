@@ -2,9 +2,13 @@ package stmgr
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -13,6 +17,7 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -21,6 +26,7 @@ import (
 	// Used for genesis.
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv10"
+	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	// we use the same adt for all receipts
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -277,6 +283,55 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 	return st, trace, nil
 }
 
+var benchState struct {
+	initAgg    sync.Once
+	aggregates []proof.AggregateSealVerifyProofAndInfos
+
+	sync.Mutex
+	e *json.Encoder
+}
+
+func benchProof() {
+	benchState.initAgg.Do(func() {
+		f, err := os.Open("agg.json")
+		if err != nil {
+			panic(err)
+		}
+
+		d := json.NewDecoder(f)
+		err = d.Decode(&benchState.aggregates)
+		if err != nil {
+			panic(err)
+		}
+
+		fOut, err := os.OpenFile("agg_bench.json", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		benchState.e = json.NewEncoder(fOut)
+	})
+
+	i := rand.Intn(len(benchState.aggregates))
+	agg := benchState.aggregates[i]
+
+	start := time.Now()
+	res, err := ffi.VerifyAggregateSeals(agg)
+	took := time.Since(start)
+
+	if !res {
+		log.Errorf("verifying aggregate at %d failed", i)
+	}
+	if err != nil {
+		log.Errorf("verifying aggregate returned error: %+v", err)
+	}
+	ss, _ := agg.SealProof.SectorSize()
+	benchState.Lock()
+	benchState.e.Encode(struct {
+		Took       time.Duration
+		AggSize    int
+		SectorSize abi.SectorSize
+	}{Took: took, AggSize: len(agg.Infos), SectorSize: ss})
+	benchState.Unlock()
+
+}
+
 type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
 func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []store.BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback, baseFee abi.TokenAmount, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
@@ -364,7 +419,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 
 	var receipts []cbg.CBORMarshaler
 	processedMsgs := make(map[cid.Cid]struct{})
-	for _, b := range bms {
+	for i, b := range bms {
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
 
@@ -376,6 +431,9 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			r, err := vmi.ApplyMessage(ctx, cm)
 			if err != nil {
 				return cid.Undef, cid.Undef, err
+			}
+			if i%7 == 0 {
+				benchProof()
 			}
 
 			receipts = append(receipts, &r.MessageReceipt)
