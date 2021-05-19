@@ -432,7 +432,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			if err != nil {
 				return cid.Undef, cid.Undef, err
 			}
-			if i%7 == 0 {
+			if i%20 == 0 {
 				benchProof()
 			}
 
