@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"runtime"
 	"sort"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -20,12 +21,9 @@ var proofType = flag.Int64("type", 8, "")
 var proofTotal = flag.Int64("total", 0, "")
 
 func main() {
-	flag.Parse()
-
 	var log = logging.Logger("agg")
-	log.Infof("proofTotal: %d", *proofTotal)
-
 	logging.SetAllLoggers(logging.LevelInfo)
+
 	f, err := os.Open("proofs.json")
 	if err != nil {
 		panic(err)
@@ -43,6 +41,7 @@ func main() {
 	{
 		infos := make(map[uint64][]proof.SealVerifyInfo)
 		var info []proof.SealVerifyInfo
+		sema := make(chan struct{}, runtime.NumCPU()/2)
 		for {
 			err = d.Decode(&info)
 			if err != nil {
@@ -53,14 +52,26 @@ func main() {
 				p.Add(len(info))
 				continue
 			}
+
 			mid := uint64(info[0].Miner)
+			ch := make(chan *proof.SealVerifyInfo, 2)
 			for _, inf := range info {
-				ok, err := ffi.VerifySeal(inf)
+				go func(inf proof.SealVerifyInfo) {
+					sema <- struct{}{}
+					ok, err := ffi.VerifySeal(inf)
+					if !ok || err != nil {
+						ch <- nil
+					}
+					ch <- &inf
+					<-sema
+				}(inf)
+			}
+			for range info {
+				inf := <-ch
 				p.Add(1)
-				if !ok || err != nil {
-					continue
+				if inf != nil {
+					infos[mid] = append(infos[mid], *inf)
 				}
-				infos[mid] = append(infos[mid], inf)
 			}
 		}
 		infosBySize = make([][]proof.SealVerifyInfo, 0, len(infos))
