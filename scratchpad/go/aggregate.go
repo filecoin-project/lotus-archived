@@ -44,14 +44,15 @@ func main() {
 			if err != nil {
 				break
 			}
-			p.Add(1)
 
 			if int64(info[0].SealProof) != *proofType {
+				p.Add(len(info))
 				continue
 			}
 			mid := uint64(info[0].Miner)
 			for _, inf := range info {
 				ok, err := ffi.VerifySeal(inf)
+				p.Add(1)
 				if !ok || err != nil {
 					continue
 				}
