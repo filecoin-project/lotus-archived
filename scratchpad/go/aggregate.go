@@ -21,7 +21,10 @@ var proofTotal = flag.Int64("total", 0, "")
 
 func main() {
 	flag.Parse()
+
 	var log = logging.Logger("agg")
+	log.Infof("proofTotal: %d", *proofTotal)
+
 	logging.SetAllLoggers(logging.LevelInfo)
 	f, err := os.Open("proofs.json")
 	if err != nil {
