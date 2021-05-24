@@ -21,6 +21,7 @@ var proofType = flag.Int64("type", 8, "")
 var proofTotal = flag.Int64("total", 0, "")
 
 func main() {
+	flag.Parse()
 	var log = logging.Logger("agg")
 	logging.SetAllLoggers(logging.LevelInfo)
 
