@@ -2,27 +2,38 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"math"
 	"math/rand"
 	"os"
 	"sort"
 
 	logging "github.com/ipfs/go-log/v2"
+	"gopkg.in/cheggaaa/pb.v1"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 )
 
-var log = logging.Logger("agg")
+var proofType = flag.Int64("type", 8, "")
+var proofTotal = flag.Int64("total", 0, "")
 
 func main() {
+	var log = logging.Logger("agg")
 	logging.SetAllLoggers(logging.LevelInfo)
 	f, err := os.Open("proofs.json")
 	if err != nil {
 		panic(err)
 	}
 	d := json.NewDecoder(f)
+
+	p := pb.New64(*proofTotal)
+	p.ShowTimeLeft = true
+	p.ShowPercent = true
+	p.ShowSpeed = true
+	p.Units = pb.U_NO
+	p.Start()
 
 	var infosBySize [][]proof.SealVerifyInfo
 	{
@@ -33,11 +44,19 @@ func main() {
 			if err != nil {
 				break
 			}
-			mid := uint64(info[0].Miner)
-			if info[0].SealProof != 8 {
+			p.Add(1)
+
+			if int64(info[0].SealProof) != *proofType {
 				continue
 			}
-			infos[mid] = append(infos[mid], info...)
+			mid := uint64(info[0].Miner)
+			for _, inf := range info {
+				ok, err := ffi.VerifySeal(inf)
+				if !ok || err != nil {
+					continue
+				}
+				infos[mid] = append(infos[mid], inf)
+			}
 		}
 		infosBySize = make([][]proof.SealVerifyInfo, 0, len(infos))
 		for _, info := range infos {
@@ -47,6 +66,7 @@ func main() {
 			return len(infosBySize[i]) > len(infosBySize[j])
 		})
 	}
+	p.Finish()
 
 	fOut, err := os.OpenFile("agg.ndjson", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
@@ -64,6 +84,12 @@ func main() {
 	j := 0
 	k := 0
 
+	p = pb.New64(444)
+	p.ShowTimeLeft = true
+	p.ShowPercent = true
+	p.ShowSpeed = true
+	p.Units = pb.U_NO
+	p.Start()
 	for N := maxProofs; N >= 10; {
 		n := N / 10
 		for ; len(infosBySize[j]) > n; j++ {
@@ -82,13 +108,6 @@ func main() {
 
 		x := j + rand.Intn(k-j)
 		info := infosBySize[x]
-		//for _, inf := range info {
-		//ok, err := ffi.VerifySeal(inf)
-		//if !ok || err != nil {
-		//fmt.Printf("verif %t error: %+v", ok, err)
-		//return
-		//}
-		//}
 		sealInfos := make([]proof.AggregateSealVerifyInfo, n)
 		proofs := make([][]byte, n)
 		for i := 0; i < n; i++ {
@@ -133,7 +152,9 @@ func main() {
 		} else {
 			N--
 		}
+		p.Add(1)
 	}
+	p.Finish()
 
 	fOut.Close()
 
