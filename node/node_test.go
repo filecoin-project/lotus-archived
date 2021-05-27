@@ -149,11 +149,21 @@ func TestPledgeSectors(t *testing.T) {
 }
 
 func TestPledgeBatching(t *testing.T) {
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("gen", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
 	t.Run("100", func(t *testing.T) {
 		test.TestPledgeBatching(t, builder.MockSbBuilder, 50*time.Millisecond, 100)
 	})
 	t.Run("100-before-nv13", func(t *testing.T) {
 		test.TestPledgeBeforeNv13(t, builder.MockSbBuilder, 50*time.Millisecond, 100)
+	})
+	t.Run("deal-expiring", func(t *testing.T) {
+		test.TestPledgeBatchingDealsExpiring(t, builder.MockSbBuilder, 5*time.Millisecond, 100)
 	})
 }
 

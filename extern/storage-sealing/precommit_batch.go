@@ -207,7 +207,7 @@ func (b *PreCommitBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, xerrors.Errorf("sending message failed: %w", err)
 	}
 
-	log.Infow("Sent ProveCommitAggregate message", "cid", mcid, "from", from, "sectors", total)
+	log.Infow("Sent PreCommitAggregate message", "cid", mcid, "from", from, "sectors", total)
 
 	for _, sector := range params.Sectors {
 		sn := sector.SectorNumber

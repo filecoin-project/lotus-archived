@@ -3,8 +3,13 @@ package test
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/lotus/markets/storageadapter"
+	"github.com/filecoin-project/lotus/node/config"
+	"math"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -166,6 +171,160 @@ func TestPledgeBatching(t *testing.T, b APIBuilder, blocktime time.Duration, nSe
 		}
 		if states[api.SectorState(sealing.SubmitPreCommitBatch)] == nSectors ||
 			(states[api.SectorState(sealing.SubmitPreCommitBatch)] > 0 && states[api.SectorState(sealing.PreCommit1)] == 0 && states[api.SectorState(sealing.PreCommit2)] == 0) {
+			pcb, err := miner.SectorPreCommitFlush(ctx)
+			require.NoError(t, err)
+			if pcb != nil {
+				fmt.Printf("PRECOMMIT BATCH: %s\n", *pcb)
+			}
+		}
+
+		if states[api.SectorState(sealing.SubmitCommitAggregate)] == nSectors ||
+			(states[api.SectorState(sealing.SubmitCommitAggregate)] > 0 && states[api.SectorState(sealing.WaitSeed)] == 0 && states[api.SectorState(sealing.Committing)] == 0) {
+			cb, err := miner.SectorCommitFlush(ctx)
+			require.NoError(t, err)
+			if cb != nil {
+				fmt.Printf("COMMIT BATCH: %s\n", *cb)
+			}
+		}
+
+		build.Clock.Sleep(100 * time.Millisecond)
+		fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
+	}
+
+	atomic.StoreInt64(&mine, 0)
+	<-done
+}
+
+func TestPledgeBatchingDealsExpiring(t *testing.T, b APIBuilder, blocktime time.Duration, nSectors int) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	publishPeriod := 10 * time.Hour
+	maxDealsPerMsg := uint64(100)
+
+	cfg := config.DefaultStorageMiner()
+	cfg.Dealmaking.MaxProviderCollateralMultiplier = math.MaxInt64
+	cfg.Dealmaking.ExpectedSealDuration = config.Duration(time.Hour)
+
+	// Set max deals per publish deals message to 2
+	minerDef := []StorageMiner{{
+		Full: 0,
+		Opts: node.Options(
+			node.Override(
+			new(*storageadapter.DealPublisher),
+			storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
+				Period:         publishPeriod,
+				MaxDealsPerMsg: maxDealsPerMsg,
+			})),
+			node.Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
+		),
+
+		Preseal: PresealGenesis,
+	}}
+
+	n, sn := b(t, []FullNodeOpts{FullNodeWithLatestActorsAt(-1)}, minerDef)
+	client := n[0].FullNode.(*impl.FullNodeAPI)
+	miner := sn[0]
+
+	addrinfo, err := client.NetAddrsListen(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := miner.NetConnect(ctx, addrinfo); err != nil {
+		t.Fatal(err)
+	}
+
+	mine := int64(1)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for atomic.LoadInt64(&mine) != 0 {
+			build.Clock.Sleep(blocktime)
+			if err := sn[0].MineOne(ctx, bminer.MineReq{Done: func(bool, abi.ChainEpoch, error) {
+
+			}}); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+
+	geth := func() abi.ChainEpoch {
+		h, err := client.ChainHead(ctx)
+		require.NoError(t, err)
+		return h.Height()
+	}
+
+	requireBelowH := func(maxH abi.ChainEpoch) {
+		require.Less(t, geth(), maxH)
+	}
+
+	waitUntilH := func(h abi.ChainEpoch) {
+		for h > geth() {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	const startEpoch = 3000
+
+	res, _, err := CreateClientFile(ctx, client, 0)
+	require.NoError(t, err)
+	res2, _, err := CreateClientFile(ctx, client, 1)
+	require.NoError(t, err)
+
+	startDeal(t, ctx, miner, client, res.Root, false, startEpoch+8000)
+	startDeal(t, ctx, miner, client, res2.Root, false, startEpoch)
+
+	requireBelowH(startEpoch)
+	waitUntilH(startEpoch - 200)
+
+	err = miner.MarketPublishPendingDeals(ctx)
+	require.NoError(t, err)
+
+	for {
+		sl, err := miner.SectorsList(ctx)
+		require.NoError(t, err)
+		fmt.Println("D:", len(sl))
+		time.Sleep(100 * time.Millisecond)
+
+		if len(sl) == 2 {
+			break
+		}
+	}
+
+	sl, err := miner.SectorsList(ctx)
+	require.NoError(t, err)
+
+	toCheck := map[abi.SectorNumber]struct{}{
+		sl[0]: {},
+		sl[1]: {},
+	}
+
+	var waitExp sync.Once
+
+	for len(toCheck) > 0 {
+		states := map[api.SectorState]int{}
+
+		for n := range toCheck {
+			st, err := miner.SectorsStatus(ctx, n, false)
+			require.NoError(t, err)
+			states[st.State]++
+			if st.State == api.SectorState(sealing.Proving) {
+				delete(toCheck, n)
+			}
+			if strings.Contains(string(st.State), "Fail") {
+				t.Fatal("sector in a failed state", st.State)
+			}
+		}
+
+		if states[api.SectorState(sealing.SubmitPreCommitBatch)] == nSectors ||
+			(states[api.SectorState(sealing.SubmitPreCommitBatch)] > 0 && states[api.SectorState(sealing.PreCommit1)] == 0 && states[api.SectorState(sealing.PreCommit2)] == 0) {
+
+			waitExp.Do(func() {
+				requireBelowH(startEpoch)
+				waitUntilH(startEpoch + 1)
+			})
+
 			pcb, err := miner.SectorPreCommitFlush(ctx)
 			require.NoError(t, err)
 			if pcb != nil {
