@@ -33,9 +33,9 @@ const UpgradePersianHeight = 150
 const UpgradeClausHeight = 180
 const UpgradeOrangeHeight = 210
 const UpgradeTrustHeight = 240
-const UpgradeNorwegianHeight = UpgradeTrustHeight + (builtin2.EpochsInHour * 12)
-const UpgradeTurboHeight = 8922
-const UpgradeHyperdriveHeight = 9999999
+const UpgradeNorwegianHeight = 250
+const UpgradeTurboHeight = 260
+const UpgradeHyperdriveHeight = 270
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))
