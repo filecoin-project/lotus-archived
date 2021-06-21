@@ -14,10 +14,12 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/itests/kit2"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
@@ -28,6 +30,9 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	}
 
 	kit2.QuietMiningLogs()
+	_ = logging.SetLogLevel("dt_graphsync", "DEBUG")
+	_ = logging.SetLogLevel("dt-impl", "DEBUG")
+	_ = logging.SetLogLevel("data_transfer_network", "DEBUG")
 
 	blockTime := 10 * time.Millisecond
 
@@ -49,13 +54,14 @@ func TestDealCyclesConcurrent(t *testing.T) {
 		})
 	}
 
-	cycles := []int{1, 2, 4, 8}
+	cycles := []int{32}
+	//cycles := []int{1, 2, 4, 8}
 	for _, n := range cycles {
 		n := n
 		ns := fmt.Sprintf("%d", n)
-		t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
-		t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
-		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
+		//t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
+		//t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
+		//t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
 		t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
 	}
 }
@@ -113,6 +119,101 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
 		runConcurrentDeals(t, dh, fullDealCyclesOpts{n: 1, fastRetrieval: true})
 	})
+
+	t.Run("quote-price-for-non-unsealed-retrieval", func(t *testing.T) {
+		runQuotePriceForUnsealedRetrieval(t, kit.Builder, time.Second, 0)
+	})
+}
+
+func runQuotePriceForUnsealedRetrieval(t *testing.T, b kit.APIBuilder, blocktime time.Duration, startEpoch abi.ChainEpoch) {
+	//	ctx := context.Background()
+	//	fulls, miners := b(t, kit.OneFull, kit.OneMiner)
+	//	client, miner := fulls[0].FullNode.(*impl.FullNodeAPI), miners[0]
+	//	kit.ConnectAndStartMining(t, blocktime, miner, client)
+	//
+	//	ppb := int64(1)
+	//	unsealPrice := int64(77)
+	//
+	//	// Set unsealed price to non-zero
+	//	ask, err := miner.MarketGetRetrievalAsk(ctx)
+	//	require.NoError(t, err)
+	//	ask.PricePerByte = abi.NewTokenAmount(ppb)
+	//	ask.UnsealPrice = abi.NewTokenAmount(unsealPrice)
+	//	err = miner.MarketSetRetrievalAsk(ctx, ask)
+	//	require.NoError(t, err)
+	//
+	//	dh := kit.NewDealHarness(t, client, miner)
+	//
+	//	_, info, fcid := dh.MakeFullDeal(kit.MakeFullDealParams{
+	//		Ctx:         ctx,
+	//		Rseed:       6,
+	//		CarExport:   false,
+	//		FastRet:     false,
+	//		StartEpoch:  startEpoch,
+	//		DoRetrieval: false,
+	//	})
+	//
+	//	// one more storage deal for the same data
+	//	_, _, fcid2 := dh.MakeFullDeal(kit.MakeFullDealParams{
+	//		Ctx:         ctx,
+	//		Rseed:       6,
+	//		CarExport:   false,
+	//		FastRet:     false,
+	//		StartEpoch:  startEpoch,
+	//		DoRetrieval: false,
+	//	})
+	//	require.Equal(t, fcid, fcid2)
+	//
+	//	// fetch quote -> zero for unsealed price since unsealed file already exists.
+	//	offers, err := client.ClientFindData(ctx, fcid, &info.PieceCID)
+	//	require.NoError(t, err)
+	//	require.Len(t, offers, 2)
+	//	require.Equal(t, offers[0], offers[1])
+	//	require.Equal(t, uint64(0), offers[0].UnsealPrice.Uint64())
+	//	require.Equal(t, info.Size*uint64(ppb), offers[0].MinPrice.Uint64())
+	//
+	//	// remove ONLY one unsealed file
+	//	ss, err := miner.StorageList(context.Background())
+	//	require.NoError(t, err)
+	//	_, err = miner.SectorsList(ctx)
+	//	require.NoError(t, err)
+	//
+	//iLoop:
+	//	for storeID, sd := range ss {
+	//		for _, sector := range sd {
+	//			require.NoError(t, miner.StorageDropSector(ctx, storeID, sector.SectorID, storiface.FTUnsealed))
+	//			// remove ONLY one
+	//			break iLoop
+	//		}
+	//	}
+	//
+	//	// get retrieval quote -> zero for unsealed price as unsealed file exists.
+	//	offers, err = client.ClientFindData(ctx, fcid, &info.PieceCID)
+	//	require.NoError(t, err)
+	//	require.Len(t, offers, 2)
+	//	require.Equal(t, offers[0], offers[1])
+	//	require.Equal(t, uint64(0), offers[0].UnsealPrice.Uint64())
+	//	require.Equal(t, info.Size*uint64(ppb), offers[0].MinPrice.Uint64())
+	//
+	//	// remove the other unsealed file as well
+	//	ss, err = miner.StorageList(context.Background())
+	//	require.NoError(t, err)
+	//	_, err = miner.SectorsList(ctx)
+	//	require.NoError(t, err)
+	//	for storeID, sd := range ss {
+	//		for _, sector := range sd {
+	//			require.NoError(t, miner.StorageDropSector(ctx, storeID, sector.SectorID, storiface.FTUnsealed))
+	//		}
+	//	}
+	//
+	//	// fetch quote -> non-zero for unseal price as we no more unsealed files.
+	//	offers, err = client.ClientFindData(ctx, fcid, &info.PieceCID)
+	//	require.NoError(t, err)
+	//	require.Len(t, offers, 2)
+	//	require.Equal(t, offers[0], offers[1])
+	//	require.Equal(t, uint64(unsealPrice), offers[0].UnsealPrice.Uint64())
+	//	total := (info.Size * uint64(ppb)) + uint64(unsealPrice)
+	//	require.Equal(t, total, offers[0].MinPrice.Uint64())
 }
 
 func TestPublishDealsBatching(t *testing.T) {
