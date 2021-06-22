@@ -59,10 +59,10 @@ func main() {
 			for _, inf := range info {
 				go func(inf proof.SealVerifyInfo) {
 					sema <- struct{}{}
-					ok, err := ffi.VerifySeal(inf)
-					if !ok || err != nil {
-						ch <- nil
-					}
+					//ok, err := ffi.VerifySeal(inf)
+					//if !ok || err != nil {
+					//ch <- nil
+					//}
 					ch <- &inf
 					<-sema
 				}(inf)
@@ -93,7 +93,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	maxProofs := 14
+	maxProofs := 13
 	Npoints := 512
 	eps := math.Pow(2, (float64(maxProofs)-3.32192809489)/float64(Npoints))
 	maxProofs = 1 << maxProofs
