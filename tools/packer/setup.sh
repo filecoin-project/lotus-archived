@@ -77,3 +77,8 @@ done &
 # bash history, and any ssh keys or passwords that might
 # be left behind.
 curl https://raw.githubusercontent.com/digitalocean/marketplace-partners/master/scripts/90-cleanup.sh | bash
+ret=$?
+
+# kill the sleep background job, and exit.
+kill 0
+exit $ret
