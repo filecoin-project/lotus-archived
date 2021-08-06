@@ -66,17 +66,8 @@ ufw default allow outgoing
 ufw allow ssh
 ufw allow 5678   #libp2p
 
-# The last command can take some time. Output something to keep circleci from hitting the timeout.
-while sleep 300
-do
-	echo $(date) "still running..."
-done &
-
 # Run digitalocean's cleanup script.
 # This script empties tmp directories, removes
 # bash history, and any ssh keys or passwords that might
 # be left behind.
 curl https://raw.githubusercontent.com/digitalocean/marketplace-partners/master/scripts/90-cleanup.sh | bash
-
-# kill the sleep background job, and exit.
-kill 0 || exit 0
