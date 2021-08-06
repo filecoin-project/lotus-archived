@@ -79,5 +79,4 @@ done &
 curl https://raw.githubusercontent.com/digitalocean/marketplace-partners/master/scripts/90-cleanup.sh | bash
 
 # kill the sleep background job, and exit.
-kill 0
-exit 0
+kill 0 || exit 0
