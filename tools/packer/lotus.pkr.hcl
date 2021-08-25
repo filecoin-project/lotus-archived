@@ -75,7 +75,7 @@ source "digitalocean" "lotus" {
 build {
   sources = [
     "source.amazon-ebs.lotus",
-    "source.digitalocean.lotus",
+    # "source.digitalocean.lotus",
   ]
 
   # Lotus software (from CI workspace)
