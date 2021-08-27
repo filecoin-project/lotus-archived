@@ -55,6 +55,7 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 }
 
 func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (power.Claim, power.Claim, bool, error) {
+	fmt.Printf("hello?\n")
 	act, err := sm.LoadActorRaw(ctx, power.Address, st)
 	if err != nil {
 		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
