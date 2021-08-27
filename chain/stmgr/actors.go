@@ -3,6 +3,7 @@ package stmgr
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/filecoin-project/go-address"
@@ -75,6 +76,9 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 		var found bool
 		mpow, found, err = pas.MinerPower(maddr)
 		if err != nil || !found {
+			if !found {
+				fmt.Printf("miner claim not found\n")
+			}
 			return power.Claim{}, tpow, false, err
 		}
 
