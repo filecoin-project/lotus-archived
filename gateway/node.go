@@ -357,6 +357,7 @@ func (gw *Node) StateReadState(ctx context.Context, actor address.Address, tsk t
 }
 
 func (gw *Node) StateMinerPower(ctx context.Context, m address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
+	fmt.Printf("in node\n")
 	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
 		return nil, err
 	}

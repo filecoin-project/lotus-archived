@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -341,6 +342,7 @@ func (a *StateAPI) StateMinerRecoveries(ctx context.Context, addr address.Addres
 }
 
 func (m *StateModule) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
+	fmt.Printf("in state module\n")
 	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
