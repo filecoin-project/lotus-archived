@@ -53,6 +53,8 @@ var frozenMinersCmd = &cli.Command{
 				return xerrors.Errorf("internal error: failed to cast miner state to expected map type")
 			}
 
+			cronActiveIface := minerState["DeadlineCronActive"]
+			cronActive := cronActiveIface.(bool)
 			ppsIface := minerState["ProvingPeriodStart"]
 			pps := int64(ppsIface.(float64))
 			dlIdxIface := minerState["CurrentDeadline"]
@@ -68,7 +70,7 @@ var frozenMinersCmd = &cli.Command{
 
 			// Equality is an error because last epoch of the deadline queryEpoch = x + 59.  Cron
 			// should get run and bump latestDeadline = x + 60 so nextDeadline = x + 120
-			if queryEpoch >= nextDeadline {
+			if cronActive && queryEpoch >= nextDeadline {
 				fmt.Printf("%s -- next deadline start in non-future epoch %d <= query epoch %d\n", mAddr, nextDeadline, queryEpoch)
 			}
 
