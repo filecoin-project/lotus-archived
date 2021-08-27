@@ -309,7 +309,7 @@ var StatePowerCmd = &cli.Command{
 				return xerrors.New("provided address does not correspond to a miner actor")
 			}
 		}
-
+		fmt.Printf("in cli\n")
 		power, err := api.StateMinerPower(ctx, maddr, ts.Key())
 		if err != nil {
 			return err
