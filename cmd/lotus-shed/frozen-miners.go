@@ -43,6 +43,7 @@ var frozenMinersCmd = &cli.Command{
 			return err
 		}
 
+		activeMinerCount := 0
 		for i, mAddr := range mAddrs {
 			st, err := api.StateReadState(ctx, mAddr, ts.Key())
 			if err != nil {
@@ -68,12 +69,16 @@ var frozenMinersCmd = &cli.Command{
 				fmt.Printf("%s -- last deadline start in future epoch %d > query epoch %d + 1\n", mAddr, latestDeadline, queryEpoch)
 			}
 
+			if cronActive {
+				activeMinerCount++
+			}
+
 			// Equality is an error because last epoch of the deadline queryEpoch = x + 59.  Cron
 			// should get run and bump latestDeadline = x + 60 so nextDeadline = x + 120
 			if cronActive && queryEpoch >= nextDeadline {
 				fmt.Printf("%s -- next deadline start in non-future epoch %d <= query epoch %d\n", mAddr, nextDeadline, queryEpoch)
 			} else if i%1000 == 0 {
-				fmt.Printf("Processed %d miners\n", i)
+				fmt.Printf("Processed %d total miners %d active miners\n", i, activeMinerCount)
 			}
 
 		}
