@@ -72,7 +72,7 @@ var frozenMinersCmd = &cli.Command{
 			// should get run and bump latestDeadline = x + 60 so nextDeadline = x + 120
 			if cronActive && queryEpoch >= nextDeadline {
 				fmt.Printf("%s -- next deadline start in non-future epoch %d <= query epoch %d\n", mAddr, nextDeadline, queryEpoch)
-			} else if i%100 == 0 {
+			} else if i%1000 == 0 {
 				fmt.Printf("Processed %d miners\n", i)
 			}
 
