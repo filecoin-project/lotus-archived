@@ -78,6 +78,8 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 		if err != nil || !found {
 			if !found {
 				fmt.Printf("miner claim not found\n")
+			} else {
+				fmt.Printf("miner claim found\n")
 			}
 			return power.Claim{}, tpow, false, err
 		}
