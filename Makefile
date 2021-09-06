@@ -85,6 +85,13 @@ butterflynet: build-devnets
 interopnet: GOFLAGS+=-tags=interopnet
 interopnet: build-devnets
 
+lotusctl: $(BUILD_DEPS)
+	rm -f lotusctl
+	$(GOCC) build $(GOFLAGS) -o lotusctl ./cmd/lotusctl
+
+.PHONY: lotusctl
+BINS+=lotusctl
+
 lotus: $(BUILD_DEPS)
 	rm -f lotus
 	$(GOCC) build $(GOFLAGS) -o lotus ./cmd/lotus

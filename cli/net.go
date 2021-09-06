@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -9,6 +10,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/dustin/go-humanize"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -23,6 +25,48 @@ import (
 	"github.com/filecoin-project/lotus/lib/addrutil"
 )
 
+const (
+	FlagMinerRepo   = "miner-repo"
+	FlagMarketsRepo = "markets-repo"
+)
+
+var ConfigCmdLotusCTL = &cli.Command{
+	Name:  "config",
+	Usage: "Manage lotusctl configuration",
+	Subcommands: []*cli.Command{
+		AutogenerateLotusCTLConfig,
+	},
+}
+
+var AutogenerateLotusCTLConfig = &cli.Command{
+	Name:  "autogenerate",
+	Usage: "Auto-generate `lotusctl` config based on environment",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		err := mustHaveLotusctlCfg(cctx)
+		if err == nil {
+			return errors.New("~/lotusctl.toml already exists, so there is nothing to autogenerate")
+		}
+
+		minerRepoPath := cctx.String(FlagMinerRepo)
+		fmt.Println("FlagMinerRepo (LOTUS_MINER_PATH): ", minerRepoPath)
+
+		marketsRepoPath := cctx.String(FlagMarketsRepo)
+		fmt.Println("FlagMinerRepo (LOTUS_MARKETS_PATH): ", marketsRepoPath)
+
+		return nil
+	},
+}
+
+var NetCmdLotusCTL = &cli.Command{
+	Name:  "net",
+	Usage: "Manage P2P Network",
+	Subcommands: []*cli.Command{
+		NetPeersLotusCTL,
+		NetIdLotusCTL,
+	},
+}
+
 var NetCmd = &cli.Command{
 	Name:  "net",
 	Usage: "Manage P2P Network",
@@ -36,6 +80,100 @@ var NetCmd = &cli.Command{
 		NetReachability,
 		NetBandwidthCmd,
 		NetBlockCmd,
+	},
+}
+
+// mustHaveLotusctlCfg returns an error if ~/lotusctl.toml does not exist
+func mustHaveLotusctlCfg(cctx *cli.Context) error {
+	cfg, err := homedir.Expand("~/lotusctl.toml")
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(cfg)
+	notexist := os.IsNotExist(err)
+	if notexist {
+		return errors.New("~/lotusctl.toml does not exist, generate it with `lotusctl config autogenerate`")
+	}
+
+	return nil
+}
+
+var NetPeersLotusCTL = &cli.Command{
+	Name:  "peers",
+	Usage: "Print peers",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "agent",
+			Aliases: []string{"a"},
+			Usage:   "Print agent name",
+		},
+		&cli.BoolFlag{
+			Name:    "extended",
+			Aliases: []string{"x"},
+			Usage:   "Print extended peer information in json",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		err := mustHaveLotusctlCfg(cctx)
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		peers, err := api.NetPeers(ctx)
+		if err != nil {
+			return err
+		}
+
+		sort.Slice(peers, func(i, j int) bool {
+			return strings.Compare(string(peers[i].ID), string(peers[j].ID)) > 0
+		})
+
+		if cctx.Bool("extended") {
+			// deduplicate
+			seen := make(map[peer.ID]struct{})
+
+			for _, peer := range peers {
+				_, dup := seen[peer.ID]
+				if dup {
+					continue
+				}
+				seen[peer.ID] = struct{}{}
+
+				info, err := api.NetPeerInfo(ctx, peer.ID)
+				if err != nil {
+					log.Warnf("error getting extended peer info: %s", err)
+				} else {
+					bytes, err := json.Marshal(&info)
+					if err != nil {
+						log.Warnf("error marshalling extended peer info: %s", err)
+					} else {
+						fmt.Println(string(bytes))
+					}
+				}
+			}
+		} else {
+			for _, peer := range peers {
+				var agent string
+				if cctx.Bool("agent") {
+					agent, err = api.NetAgentVersion(ctx, peer.ID)
+					if err != nil {
+						log.Warnf("getting agent version: %s", err)
+					} else {
+						agent = ", " + agent
+					}
+				}
+				fmt.Printf("%s, %s%s\n", peer.ID, peer.Addrs, agent)
+			}
+		}
+
+		return nil
 	},
 }
 
@@ -238,6 +376,33 @@ var NetConnect = &cli.Command{
 			fmt.Println("success")
 		}
 
+		return nil
+	},
+}
+
+var NetIdLotusCTL = &cli.Command{
+	Name:  "id",
+	Usage: "Get node identity",
+	Action: func(cctx *cli.Context) error {
+		err := mustHaveLotusctlCfg(cctx)
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		pid, err := api.ID(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(pid)
 		return nil
 	},
 }

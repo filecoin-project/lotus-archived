@@ -13,6 +13,7 @@ import (
 
 // Common is common config between full node and miner
 type Common struct {
+	Service
 	API    API
 	Backup Backup
 	Libp2p Libp2p
@@ -37,6 +38,22 @@ type Backup struct {
 	// Note that in case of metadata corruption it might be much harder to recover
 	// your node if metadata log is disabled
 	DisableMetadataLog bool
+}
+
+// Service is a service config
+type Service struct {
+	Endpoints Endpoints
+}
+
+type Endpoints struct {
+	FullNode        string
+	FullNodeDir     string
+	StorageMiner    string
+	StorageMinerDir string
+	Worker          string
+	WorkerDir       string
+	Markets         string
+	MarketsDir      string
 }
 
 // StorageMiner is a miner config

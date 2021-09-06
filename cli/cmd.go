@@ -87,6 +87,11 @@ var Commands = []*cli.Command{
 	VersionCmd,
 }
 
+var CommandsLotusCTL = []*cli.Command{
+	WithCategory("config", ConfigCmdLotusCTL),
+	WithCategory("network", NetCmdLotusCTL),
+}
+
 func WithCategory(cat string, cmd *cli.Command) *cli.Command {
 	cmd.Category = strings.ToUpper(cat)
 	return cmd

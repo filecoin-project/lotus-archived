@@ -2,6 +2,7 @@
 /appimage-builder-cache
 *.AppImage
 /lotus
+/lotusctl
 /lotus-miner
 /lotus-worker
 /lotus-seed

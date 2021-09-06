@@ -30,6 +30,14 @@ func (b *BatchFeeConfig) FeeForSectors(nSectors int) abi.TokenAmount {
 
 func defCommon() Common {
 	return Common{
+		Service: Service{
+			Endpoints: Endpoints{
+				FullNodeDir:     "~/.lotus",
+				StorageMinerDir: "~/.lotusminer",
+				WorkerDir:       "~/.lotusworker",
+				MarketsDir:      "~/.lotusminer",
+			},
+		},
 		API: API{
 			ListenAddress: "/ip4/127.0.0.1/tcp/1234/http",
 			Timeout:       Duration(30 * time.Second),

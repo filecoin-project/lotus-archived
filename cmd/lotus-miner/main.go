@@ -114,6 +114,10 @@ func main() {
 				DefaultText: "depends on output being a TTY",
 			},
 			&cli.StringFlag{
+				Name:  "service-repo",
+				Usage: "Specify the location of this service's repository",
+			},
+			&cli.StringFlag{
 				Name:    "repo",
 				EnvVars: []string{"LOTUS_PATH"},
 				Hidden:  true,

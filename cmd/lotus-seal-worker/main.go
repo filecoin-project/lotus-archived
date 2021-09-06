@@ -69,6 +69,10 @@ func main() {
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
+				Name:  "service-repo",
+				Usage: "Specify the location of this service's repository",
+			},
+			&cli.StringFlag{
 				Name:    FlagWorkerRepo,
 				Aliases: []string{FlagWorkerRepoDeprecation},
 				EnvVars: []string{"LOTUS_WORKER_PATH", "WORKER_PATH"},

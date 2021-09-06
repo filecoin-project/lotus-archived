@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/mitchellh/go-homedir"
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -85,6 +85,126 @@ func EnvsForAPIInfos(t repo.RepoType) (primary string, fallbacks []string, depre
 	}
 }
 
+func getAPIInfoFromService(path string, rcfg config.Service, t repo.RepoType, checkRepoDir bool) (APIInfo, error) {
+	if checkRepoDir {
+		switch t {
+		case repo.FullNode:
+			if rcfg.Endpoints.FullNode != "" {
+				return APIInfo{Addr: rcfg.Endpoints.FullNode}, nil
+			}
+			if p := rcfg.Endpoints.FullNodeDir; p != "" {
+				path = p
+			}
+			return apiInfoFromRepoDir(path)
+		case repo.StorageMiner:
+			if rcfg.Endpoints.StorageMiner != "" {
+				return APIInfo{Addr: rcfg.Endpoints.StorageMiner}, nil
+			}
+			if p := rcfg.Endpoints.StorageMinerDir; p != "" {
+				path = p
+			}
+			return apiInfoFromRepoDir(path)
+		case repo.Worker:
+			if rcfg.Endpoints.Worker != "" {
+				return APIInfo{Addr: rcfg.Endpoints.Worker}, nil
+			}
+			if p := rcfg.Endpoints.WorkerDir; p != "" {
+				path = p
+			}
+			return apiInfoFromRepoDir(path)
+		case repo.Markets:
+			if rcfg.Endpoints.Markets != "" {
+				return APIInfo{Addr: rcfg.Endpoints.Markets}, nil
+			}
+			if p := rcfg.Endpoints.MarketsDir; p != "" {
+				path = p
+			}
+			return apiInfoFromRepoDir(path)
+		default:
+			panic(fmt.Sprintf("Unknown repo type: %v", t))
+		}
+	} else {
+		switch t {
+		case repo.FullNode:
+			if rcfg.Endpoints.FullNode != "" {
+				return APIInfo{Addr: rcfg.Endpoints.FullNode}, nil
+			}
+			if p := rcfg.Endpoints.FullNodeDir; p != "" {
+				return apiInfoFromRepoDir(p)
+			}
+		case repo.StorageMiner:
+			if rcfg.Endpoints.StorageMiner != "" {
+				return APIInfo{Addr: rcfg.Endpoints.StorageMiner}, nil
+			}
+			if p := rcfg.Endpoints.StorageMinerDir; p != "" {
+				return apiInfoFromRepoDir(p)
+			}
+		case repo.Worker:
+			if rcfg.Endpoints.Worker != "" {
+				return APIInfo{Addr: rcfg.Endpoints.Worker}, nil
+			}
+			if p := rcfg.Endpoints.WorkerDir; p != "" {
+				return apiInfoFromRepoDir(p)
+			}
+		case repo.Markets:
+			if rcfg.Endpoints.Markets != "" {
+				return APIInfo{Addr: rcfg.Endpoints.Markets}, nil
+			}
+			if p := rcfg.Endpoints.MarketsDir; p != "" {
+				return apiInfoFromRepoDir(p)
+			}
+		default:
+			panic(fmt.Sprintf("Unknown repo type: %v", t))
+		}
+
+		return APIInfo{}, errors.New("missing config in rcfg")
+	}
+}
+
+func tryLotusctlTOML(ctx *cli.Context, t repo.RepoType) (APIInfo, error, bool) {
+	path := "~/lotusctl.toml"
+
+	p, err := homedir.Expand(path)
+	if err != nil {
+		return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", path, err), false
+	}
+
+	cfg := &config.Service{}
+	ff, err := config.FromFile(p, cfg)
+	if err != nil {
+		return APIInfo{}, xerrors.Errorf("couldn't load service config: %w", err), false
+	}
+
+	rcfg := *ff.(*config.Service)
+
+	apiinfo, err := getAPIInfoFromService(path, rcfg, t, false)
+	return apiinfo, err, true
+}
+
+func tryServiceRepoFlag(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
+	flag := "service-repo"
+	if !ctx.IsSet(flag) {
+		return APIInfo{}, errors.New("--service-repo must be specified")
+	}
+
+	path := ctx.String(flag)
+
+	p, err := homedir.Expand(path)
+	if err != nil {
+		return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", path, err)
+	}
+
+	cfg := &config.Service{}
+	ff, err := config.FromFile(p+"/config.toml", cfg)
+	if err != nil {
+		return APIInfo{}, xerrors.Errorf("couldn't load service config: %w", err)
+	}
+
+	rcfg := *ff.(*config.Service)
+
+	return getAPIInfoFromService(path, rcfg, t, true)
+}
+
 // GetAPIInfo returns the API endpoint to use for the specified kind of repo.
 //
 // The order of precedence is as follows:
@@ -94,88 +214,48 @@ func EnvsForAPIInfos(t repo.RepoType) (primary string, fallbacks []string, depre
 //  3. deprecated *_API_INFO environment variables
 //  4. *-repo command line flags.
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
-	// Check if there was a flag passed with the listen address of the API
-	// server (only used by the tests)
-	apiFlags := flagsForAPI(t)
-	for _, f := range apiFlags {
-		if !ctx.IsSet(f) {
-			continue
-		}
-		strma := ctx.String(f)
-		strma = strings.TrimSpace(strma)
-
-		return APIInfo{Addr: strma}, nil
+	// Check ~/lotusctl.toml in the HOME directory. If this file exists, it has precedence over every other deprecated flag,
+	// such as --repo or --miner-repo, as well as environment variable, such as LOTUS_MINER_PATH or LOTUS_MARKETS_PATH.
+	if apiinfo, err, ok := tryLotusctlTOML(ctx, t); ok {
+		return apiinfo, err
 	}
 
-	//
-	// Note: it is not correct/intuitive to prefer environment variables over
-	// CLI flags (repo flags below).
-	//
-	primaryEnv, fallbacksEnvs, deprecatedEnvs := EnvsForAPIInfos(t)
-	env, ok := os.LookupEnv(primaryEnv)
-	if ok {
-		return ParseApiInfo(env), nil
+	// Check the config.toml within the `service-repo` directory. If this file exists, it has precedence over every other deprecated flag,
+	// such as --repo or --miner-repo, as well as environment variable, such as LOTUS_MINER_PATH or LOTUS_MARKETS_PATH.
+	return tryServiceRepoFlag(ctx, t)
+}
+
+func apiInfoFromRepoDir(path string) (APIInfo, error) {
+	p, err := homedir.Expand(path)
+	if err != nil {
+		return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", path, err)
 	}
 
-	for _, env := range deprecatedEnvs {
-		env, ok := os.LookupEnv(env)
-		if ok {
-			log.Warnf("Using deprecated env(%s) value, please use env(%s) instead.", env, primaryEnv)
-			return ParseApiInfo(env), nil
-		}
+	r, err := repo.NewFS(p)
+	if err != nil {
+		return APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
 	}
 
-	repoFlags := flagsForRepo(t)
-	for _, f := range repoFlags {
-		// cannot use ctx.IsSet because it ignores default values
-		path := ctx.String(f)
-		if path == "" {
-			continue
-		}
-
-		p, err := homedir.Expand(path)
-		if err != nil {
-			return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", f, err)
-		}
-
-		r, err := repo.NewFS(p)
-		if err != nil {
-			return APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
-		}
-
-		exists, err := r.Exists()
-		if err != nil {
-			return APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
-		}
-
-		if !exists {
-			return APIInfo{}, errors.New("repo directory does not exist. Make sure your configuration is correct")
-		}
-
-		ma, err := r.APIEndpoint()
-		if err != nil {
-			return APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
-		}
-
-		token, err := r.APIToken()
-		if err != nil {
-			log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
-		}
-
-		return APIInfo{
-			Addr:  ma.String(),
-			Token: token,
-		}, nil
+	exists, err := r.Exists()
+	if err != nil {
+		return APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
 	}
 
-	for _, env := range fallbacksEnvs {
-		env, ok := os.LookupEnv(env)
-		if ok {
-			return ParseApiInfo(env), nil
-		}
+	if !exists {
+		return APIInfo{}, xerrors.Errorf("repo directory does not exist at %s", path)
 	}
 
-	return APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t)
+	ma, err := r.APIEndpoint()
+	if err != nil {
+		return APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
+	}
+
+	token, err := r.APIToken()
+	if err != nil {
+		log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
+	}
+
+	return APIInfo{Addr: ma.String(), Token: token}, nil
 }
 
 func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.Header, error) {
