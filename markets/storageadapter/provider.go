@@ -4,9 +4,11 @@ package storageadapter
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
@@ -85,6 +87,8 @@ func NewProviderNodeAdapter(fc *config.MinerFeeConfig, dc *config.DealmakingConf
 }
 
 func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (cid.Cid, error) {
+	fmt.Println("ProviderNodeAdapter.PublishDeals")
+	spew.Dump(deal)
 	return n.dealPublisher.Publish(ctx, deal.ClientDealProposal)
 }
 
