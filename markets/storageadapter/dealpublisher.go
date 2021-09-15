@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -346,6 +347,9 @@ func (p *DealPublisher) validateDeal(deal market2.ClientDealProposal) error {
 	if err != nil {
 		return xerrors.Errorf("serializing PublishStorageDeals params failed: %w", err)
 	}
+
+	spew.Dump(deal)
+	spew.Dump(params)
 
 	addr, _, err := p.as.AddressFor(p.ctx, p.api, mi, api.DealPublishAddr, big.Zero(), big.Zero())
 	if err != nil {
