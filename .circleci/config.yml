@@ -518,6 +518,17 @@ jobs:
   lint-all:
     <<: *lint
 
+  build-deb:
+    description: "build debian package"
+    executor: ubuntu
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - run:
+          name: "build debian package"
+          command: ./scripts/build-debian.sh
+
   publish:
     description: publish binary artifacts
     executor: ubuntu
@@ -999,6 +1010,9 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-debian:
+          requires:
+            - build-all
       - publish:
           requires:
             - build-all
