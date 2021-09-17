@@ -525,7 +525,9 @@ jobs:
       - checkout
       - run:
           name: "install git"
-          command: "apt update && apt install -y git"
+          command: |
+            apt update
+            apt install -y git ocl-icd-opencl-dev libhwloc-dev
       - prepare
       - run:
           name: "build lotus"
