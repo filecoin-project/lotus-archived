@@ -518,7 +518,7 @@ jobs:
   lint-all:
     <<: *lint
 
-  build-deb:
+  build-debian:
     description: "build debian package"
     executor: ubuntu
     steps:
