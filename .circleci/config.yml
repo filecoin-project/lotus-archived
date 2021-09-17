@@ -1012,9 +1012,7 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-debian:
-          requires:
-            - build-all
+      - build-debian
       - publish:
           requires:
             - build-all
