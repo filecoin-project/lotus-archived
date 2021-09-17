@@ -524,7 +524,9 @@ jobs:
     steps:
       - checkout
       - prepare
-      - make lotus
+      - run:
+          name: "build lotus"
+          command: make lotus
       - run:
           name: "build debian package"
           command: ./scripts/build-debian.sh
