@@ -518,12 +518,14 @@ jobs:
   lint-all:
     <<: *lint
 
-  build-debian:
-    description: "build debian package"
+  build-ubuntu-deb:
+    description: "build debian package on ubuntu"
     executor: ubuntu
     steps:
       - checkout
-      - install-deps
+      - run:
+          name: "install git"
+          command: "apt update && apt install git"
       - prepare
       - run:
           name: "build lotus"
@@ -1013,7 +1015,7 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-debian
+      - build-ubuntu-deb
       - publish:
           requires:
             - build-all
