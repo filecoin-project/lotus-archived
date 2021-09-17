@@ -30,7 +30,7 @@ EOF
 
 # lotus binary package
 mkdir -p "${LOTUS}/usr/bin"
-cp linux/lotus "${LOTUS}/usr/bin/"
+cp lotus "${LOTUS}/usr/bin/"
 chmod +x "${LOTUS}/usr/bin/lotus"
 mkcontrol "${LOTUS}" lotus "hwloc, ocl-icd-libopencl1"
 dpkg-deb --build --root-owner-group  "${LOTUS}"
