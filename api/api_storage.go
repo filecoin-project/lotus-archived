@@ -209,6 +209,12 @@ type StorageMiner interface {
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]DagstoreShardResult, error) //perm:admin
 
+	// DagstoreInvertedIndexSize returns the size of the inverted index.
+	DagstoreInvertedIndexSize(ctx context.Context) (int64, error) //perm:admin
+
+	// DagstoreLookupPieces returns information about shards that contain the given CID.
+	DagstoreLookupPieces(ctx context.Context, cid string) ([]DagstoreShardInfo, error) //perm:admin
+
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read

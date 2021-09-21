@@ -828,6 +828,53 @@ func (sm *StorageMinerAPI) DagstoreGC(ctx context.Context) ([]api.DagstoreShardR
 	return ret, nil
 }
 
+func (sm *StorageMinerAPI) DagstoreInvertedIndexSize(ctx context.Context) (int64, error) {
+	if sm.DAGStore == nil {
+		return nil, fmt.Errorf("dagstore not available on this node")
+	}
+
+	res, err := sm.DAGStore.InvertedIndex.Size(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dagstore inverted index size: %w", err)
+	}
+
+	return res, nil
+}
+
+func (sm *StorageMinerAPI) DagstoreLookupPieces(ctx context.Context, cid string) ([]api.DagstoreShardInfo, error) {
+	if sm.DAGStore == nil {
+		return nil, fmt.Errorf("dagstore not available on this node")
+	}
+
+	// TODO: take mhash from cid
+
+	keys := sm.DAGStore.InvertedIndex.GetShardsForMultihash(cid)
+
+	var ret []api.DagstoreShardInfo
+
+	for _, k := range keys {
+		shard := sm.DAGStore.GetShardInfo(k)
+
+		ret = append(ret, api.DagstoreShardInfo{
+			Key:   k.String(),
+			State: i.ShardState.String(),
+			Error: func() string {
+				if i.Error == nil {
+					return ""
+				}
+				return i.Error.Error()
+			}(),
+		})
+	}
+
+	// order by key.
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].Key < ret[j].Key
+	})
+
+	return ret, nil
+}
+
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
 	return sm.listDeals(ctx)
 }
