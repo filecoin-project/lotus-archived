@@ -27,7 +27,8 @@ const UnixfsLinksPerLevel = 1024
 
 const AllowableClockDriftSecs = uint64(1)
 
-// TODO: This is still terrible...What's the impact of updating this before mainnet actually upgrades
+// TODO: This is still terrible...
+// Used by StateManager to figure out network version when UpgradeSchedule is empty
 const NewestNetworkVersion = network.Version14
 
 // Epochs
