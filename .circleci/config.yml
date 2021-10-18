@@ -371,6 +371,11 @@ jobs:
           command: |
             curl https://sh.rustup.rs -sSf | sh -s -- -y
       - run:
+          name: Install jq
+          command: |
+            sudo curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
+            sudo chmod +x /usr/local/bin/jq
+      - run:
           name: Install hwloc
           command: |
             mkdir ~/hwloc
@@ -436,6 +441,8 @@ jobs:
           command: |
             mkdir appimage
             mv Lotus-*.AppImage appimage
+      - store_artifacts:
+          path: appimage
       - persist_to_workspace:
           root: "."
           paths:
@@ -968,11 +975,7 @@ workflows:
               only:
                 - master
       - build-debug
-      - build-all:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-all
       - build-ntwk-calibration:
           filters:
             tags:
@@ -990,14 +993,7 @@ workflows:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
       - build-macos
-      - build-appimage:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-appimage
       - publish:
           requires:
             - build-all
