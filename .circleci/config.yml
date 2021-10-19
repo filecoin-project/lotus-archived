@@ -414,26 +414,11 @@ jobs:
 
   build-appimage:
     machine:
-      image: ubuntu-2004:202104-01
+      image: appimagecrafters/appimage-builder:latest
     steps:
       - checkout
       - attach_workspace:
           at: "."
-      - run:
-          name: install appimage-builder
-          command: |
-            # docs: https://appimage-builder.readthedocs.io/en/latest/intro/install.html
-            sudo apt update
-            sudo apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace fuse
-
-            sudo wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /opt/appimagetool
-
-            # workaround AppImage issues with Docker
-            cd /opt/; sudo chmod +x appimagetool; sudo sed -i 's|AI\x02|\x00\x00\x00|' appimagetool; sudo ./appimagetool --appimage-extract
-            sudo mv /opt/squashfs-root /opt/appimagetool.AppDir
-            sudo ln -s /opt/appimagetool.AppDir/AppRun /usr/local/bin/appimagetool
-
-            sudo pip3 install appimage-builder
       - run:
           name: install lotus dependencies
           command: sudo apt install ocl-icd-opencl-dev libhwloc-dev
