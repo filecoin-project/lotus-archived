@@ -431,6 +431,9 @@ jobs:
       - run:
           name: install lotus dependencies
           command: sudo apt install ocl-icd-opencl-dev libhwloc-dev
+      - setup_remote_docker:
+          version: 19.03.13
+          docker_layer_caching: false
       - run:
           name: build appimage
           command: |
