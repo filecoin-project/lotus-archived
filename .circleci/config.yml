@@ -424,16 +424,13 @@ jobs:
           command: |
             # docs: https://appimage-builder.readthedocs.io/en/latest/intro/install.html
             sudo apt update
-            sudo apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace
+            sudo apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace fuse
             sudo curl -Lo /usr/local/bin/appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
             sudo chmod +x /usr/local/bin/appimagetool
             sudo pip3 install appimage-builder
       - run:
           name: install lotus dependencies
           command: sudo apt install ocl-icd-opencl-dev libhwloc-dev
-      - setup_remote_docker:
-          version: 19.03.13
-          docker_layer_caching: false
       - run:
           name: build appimage
           command: |
